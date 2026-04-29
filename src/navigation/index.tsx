@@ -5,6 +5,7 @@ import {
 import { StyleSheet } from 'react-native';
 
 import { HomeScreen } from '../screens/HomeScreen';
+import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { colors } from '../theme';
 import type { RootStackParamList } from '../types/navigation';
 
@@ -23,7 +24,8 @@ const screenOptions: NativeStackNavigationOptions = {
 
 export function AppNavigator() {
   return (
-    <Stack.Navigator initialRouteName="Home" screenOptions={screenOptions}>
+    <Stack.Navigator initialRouteName="Onboarding" screenOptions={screenOptions}>
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="Home" component={HomeScreen} />
     </Stack.Navigator>
   );
