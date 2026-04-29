@@ -23,6 +23,7 @@ export function OnboardingItem({ title, description, image }: OnboardingItemProp
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
+    backgroundColor: colors.white,
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,

@@ -104,11 +104,12 @@ const styles = StyleSheet.create({
     width: '80%',
   },
   container: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
     flex: 1,
   },
   footer: {
     alignItems: 'center',
+    backgroundColor: colors.white,
     paddingBottom: spacing.lg,
     paddingHorizontal: spacing.lg,
     rowGap: spacing.lg,
