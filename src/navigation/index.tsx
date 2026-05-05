@@ -1,13 +1,16 @@
 import {
   createNativeStackNavigator,
   type NativeStackNavigationOptions,
-} from '@react-navigation/native-stack';
-import { StyleSheet } from 'react-native';
+} from "@react-navigation/native-stack";
+import { StyleSheet } from "react-native";
 
-import { HomeScreen } from '../screens/HomeScreen';
-import { OnboardingScreen } from '../screens/OnboardingScreen';
-import { colors } from '../theme';
-import type { RootStackParamList } from '../types/navigation';
+import { HomeScreen } from "../screens/HomeScreen";
+import LoginScreen from "../screens/LoginScreen";
+import { OnboardingScreen } from "../screens/OnboardingScreen";
+import RegisterScreen from "../screens/RegisterScreen";
+
+import { colors } from "../theme";
+import type { RootStackParamList } from "../types/navigation";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -24,8 +27,15 @@ const screenOptions: NativeStackNavigationOptions = {
 
 export function AppNavigator() {
   return (
-    <Stack.Navigator initialRouteName="Onboarding" screenOptions={screenOptions}>
+    <Stack.Navigator
+      initialRouteName="Onboarding"
+      screenOptions={screenOptions}
+    >
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+
       <Stack.Screen name="Home" component={HomeScreen} />
     </Stack.Navigator>
   );
