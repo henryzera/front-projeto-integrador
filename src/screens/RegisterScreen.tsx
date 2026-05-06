@@ -10,10 +10,14 @@ import {
   type KeyboardAvoidingViewProps,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { z } from 'zod';
 
 import { AuthButton, AuthTextInput } from '../components/authentication';
+import { ApiError } from '../services';
+import { useAuth } from '../store';
 import { colors, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../types/navigation';
+import { registerFormSchema } from '../validation/auth';
 
 type RegisterScreenProps = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -34,6 +38,9 @@ const keyboardAvoidingBehavior: KeyboardAvoidingViewProps['behavior'] = Platform
 });
 
 export function RegisterScreen({ navigation }: RegisterScreenProps) {
+  const { signUp } = useAuth();
+  const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
   const [formValues, setFormValues] = useState<RegisterFormValues>({
     cnae: '',
@@ -55,15 +62,49 @@ export function RegisterScreen({ navigation }: RegisterScreenProps) {
     };
 
   const handleNextPress = (): void => {
+    setFormError('');
+
+    if (step === 1 && (!formValues.email || !formValues.firstName || !formValues.lastName)) {
+      setFormError('Preencha seus dados pessoais para continuar.');
+      return;
+    }
+
+    if (step === 2 && (!formValues.cnpj || !formValues.cnae)) {
+      setFormError('Preencha CNPJ e CNAE para continuar.');
+      return;
+    }
+
     setStep((currentStep) => Math.min(currentStep + 1, totalSteps));
   };
 
   const handleBackPress = (): void => {
+    setFormError('');
     setStep((currentStep) => Math.max(currentStep - 1, 1));
   };
 
-  const handleSubmitPress = (): void => {
-    navigation.navigate('Login');
+  const handleSubmitPress = async (): Promise<void> => {
+    setFormError('');
+
+    try {
+      const data = registerFormSchema.parse(formValues);
+
+      setIsSubmitting(true);
+      await signUp(data);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setFormError(error.issues[0]?.message || 'Revise os dados informados.');
+        return;
+      }
+
+      if (error instanceof ApiError) {
+        setFormError(error.message);
+        return;
+      }
+
+      setFormError('Nao foi possivel criar sua conta agora.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleLoginPress = (): void => {
@@ -145,7 +186,10 @@ export function RegisterScreen({ navigation }: RegisterScreenProps) {
             <AuthButton
               title={step < totalSteps ? 'Próximo' : 'Cadastrar'}
               onPress={step < totalSteps ? handleNextPress : handleSubmitPress}
+              isLoading={isSubmitting}
             />
+
+            {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
           </View>
 
           {step > 1 && (
@@ -177,6 +221,11 @@ const styles = StyleSheet.create({
   },
   form: {
     rowGap: spacing.md,
+  },
+  errorText: {
+    ...typography.body,
+    color: '#B42318',
+    textAlign: 'center',
   },
   header: {
     marginBottom: spacing.xl,

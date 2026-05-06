@@ -10,10 +10,14 @@ import {
   type KeyboardAvoidingViewProps,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { z } from 'zod';
 
 import { AuthButton, AuthTextInput } from '../components/authentication';
+import { ApiError } from '../services';
+import { useAuth } from '../store';
 import { colors, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../types/navigation';
+import { loginFormSchema } from '../validation/auth';
 
 type LoginScreenProps = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -23,10 +27,37 @@ const keyboardAvoidingBehavior: KeyboardAvoidingViewProps['behavior'] = Platform
 
 export function LoginScreen({ navigation }: LoginScreenProps) {
   const [emailOrCnpj, setEmailOrCnpj] = useState('');
+  const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [password, setPassword] = useState('');
+  const { signIn } = useAuth();
 
-  const handleLoginPress = (): void => {
-    navigation.navigate('Home');
+  const handleLoginPress = async (): Promise<void> => {
+    setFormError('');
+
+    try {
+      const data = loginFormSchema.parse({
+        identifier: emailOrCnpj,
+        password,
+      });
+
+      setIsSubmitting(true);
+      await signIn(data);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setFormError(error.issues[0]?.message || 'Revise os dados informados.');
+        return;
+      }
+
+      if (error instanceof ApiError) {
+        setFormError(error.message);
+        return;
+      }
+
+      setFormError('Nao foi possivel entrar agora.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleRegisterPress = (): void => {
@@ -66,7 +97,9 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
               <Text style={styles.forgotPassword}>Esqueci minha senha</Text>
             </TouchableOpacity>
 
-            <AuthButton title="Entrar" onPress={handleLoginPress} />
+            {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
+
+            <AuthButton title="Entrar" onPress={handleLoginPress} isLoading={isSubmitting} />
           </View>
 
           <TouchableOpacity activeOpacity={0.7} onPress={handleRegisterPress} style={styles.registerLink}>
@@ -97,6 +130,11 @@ const styles = StyleSheet.create({
   },
   form: {
     rowGap: spacing.md,
+  },
+  errorText: {
+    ...typography.body,
+    color: '#B42318',
+    textAlign: 'center',
   },
   header: {
     marginBottom: spacing.xl,
