@@ -1,18 +1,17 @@
-import { Dimensions, Image, type ImageSourcePropType, StyleSheet, Text, View } from 'react-native';
+import { Image, type ImageSourcePropType, StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '../theme';
-
-const screenWidth = Dimensions.get('window').width;
 
 export interface OnboardingItemProps {
   title: string;
   description: string;
   image: ImageSourcePropType;
+  width: number;
 }
 
-export function OnboardingItem({ title, description, image }: OnboardingItemProps) {
+export function OnboardingItem({ title, description, image, width }: OnboardingItemProps) {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { width }]}>
       <Image source={image} resizeMode="contain" style={styles.image} />
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.description}>{description}</Text>
@@ -27,7 +26,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
-    width: screenWidth,
   },
   description: {
     ...typography.body,

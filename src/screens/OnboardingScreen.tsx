@@ -70,7 +70,10 @@ export function OnboardingScreen({ navigation }: OnboardingScreenProps) {
     const nextIndex = currentIndex + 1;
 
     if (nextIndex < onboardingSlides.length) {
-      flatListRef.current?.scrollToIndex({ animated: true, index: nextIndex });
+      flatListRef.current?.scrollToOffset({
+        animated: true,
+        offset: nextIndex * width,
+      });
       setCurrentIndex(nextIndex);
       return;
     }
@@ -83,6 +86,12 @@ export function OnboardingScreen({ navigation }: OnboardingScreenProps) {
       <FlatList
         ref={flatListRef}
         data={onboardingSlides}
+        extraData={width}
+        getItemLayout={(_, index) => ({
+          index,
+          length: width,
+          offset: width * index,
+        })}
         horizontal
         keyExtractor={(item) => item.id}
         onMomentumScrollEnd={handleScrollEnd}
@@ -92,6 +101,7 @@ export function OnboardingScreen({ navigation }: OnboardingScreenProps) {
             title={item.title}
             description={item.description}
             image={item.image}
+            width={width}
           />
         )}
         showsHorizontalScrollIndicator={false}
