@@ -5,9 +5,9 @@ import {
 import { StyleSheet } from "react-native";
 
 import { HomeScreen } from "../screens/HomeScreen";
-import LoginScreen from "../screens/LoginScreen";
+import { LoginScreen } from "../screens/LoginScreen";
 import { OnboardingScreen } from "../screens/OnboardingScreen";
-import RegisterScreen from "../screens/RegisterScreen";
+import { RegisterScreen } from "../screens/RegisterScreen";
 
 import { colors } from "../theme";
 import type { RootStackParamList } from "../types/navigation";
