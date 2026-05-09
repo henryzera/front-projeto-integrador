@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     ...typography.body,
-    color: '#B42318',
+    color: colors.error,
     textAlign: 'center',
   },
   header: {

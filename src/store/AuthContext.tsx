@@ -11,6 +11,7 @@ import {
 import {
   getMe,
   login,
+  logout,
   register,
   type AuthUser,
   type LoginPayload,
@@ -19,6 +20,7 @@ import {
 import { clearStoredToken, getStoredToken, setStoredToken } from './authStorage';
 
 type AuthContextValue = {
+  didSignOut: boolean;
   isLoading: boolean;
   signIn: (payload: LoginPayload) => Promise<void>;
   signOut: () => Promise<void>;
@@ -31,11 +33,13 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [isLoading, setIsLoading] = useState(true);
+  const [didSignOut, setDidSignOut] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
 
   const applySession = useCallback(async (nextToken: string, nextUser: AuthUser) => {
     await setStoredToken(nextToken);
+    setDidSignOut(false);
     setToken(nextToken);
     setUser(nextUser);
   }, []);
@@ -57,10 +61,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
   );
 
   const signOut = useCallback(async () => {
-    await clearStoredToken();
-    setToken(null);
-    setUser(null);
-  }, []);
+    try {
+      const activeToken = token || (await getStoredToken());
+
+      if (activeToken) {
+        await logout(activeToken);
+      }
+    } catch {
+      // Local session cleanup must win even if the token was already revoked.
+    } finally {
+      await clearStoredToken();
+      setDidSignOut(true);
+      setToken(null);
+      setUser(null);
+    }
+  }, [token]);
 
   useEffect(() => {
     let isMounted = true;
@@ -97,6 +112,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<AuthContextValue>(
     () => ({
+      didSignOut,
       isLoading,
       signIn,
       signOut,
@@ -104,7 +120,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       token,
       user,
     }),
-    [isLoading, signIn, signOut, signUp, token, user],
+    [didSignOut, isLoading, signIn, signOut, signUp, token, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -6,6 +6,8 @@ type Typography = {
   title: TypographyStyle;
   body: TypographyStyle;
   button: TypographyStyle;
+  caption: TypographyStyle;
+  tabLabel: TypographyStyle;
 };
 
 export const typography: Typography = {
@@ -19,6 +21,14 @@ export const typography: Typography = {
   },
   button: {
     fontSize: 16,
+    fontWeight: '600',
+  },
+  caption: {
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  tabLabel: {
+    fontSize: 12,
     fontWeight: '600',
   },
 };

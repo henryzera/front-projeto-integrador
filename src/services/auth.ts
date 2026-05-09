@@ -45,6 +45,13 @@ export function register(payload: RegisterPayload): Promise<AuthResponse> {
   });
 }
 
+export function logout(token: string): Promise<void> {
+  return apiRequest<void>('/auth/logout', {
+    method: 'POST',
+    token,
+  });
+}
+
 export function getMe(token: string): Promise<{ user: AuthUser }> {
   return apiRequest<{ user: AuthUser }>('/me', { token });
 }

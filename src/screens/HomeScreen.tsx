@@ -1,17 +1,40 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button } from '../components/Button';
+import {
+  HomeFilterTabs,
+  HomeSearchBar,
+  OpportunityCard,
+  type HomeFilter,
+  type OpportunityCardVariant,
+} from '../components/home';
 import { listContratacoes, type Contratacao } from '../services';
 import { useAuth } from '../store';
 import { colors, spacing, typography } from '../theme';
 
+type OpportunityColumnItem = {
+  item: Contratacao;
+  originalIndex: number;
+  variant: OpportunityCardVariant;
+};
+
+type OpportunityColumns = {
+  left: OpportunityColumnItem[];
+  right: OpportunityColumnItem[];
+};
+
+const opportunitiesLimit = 12;
+const compatibilityScores = [80, 76, 92, 84, 88, 72];
+
 export function HomeScreen() {
-  const { signOut, token, user } = useAuth();
+  const { token } = useAuth();
+  const [activeFilter, setActiveFilter] = useState<HomeFilter>('mei');
   const [contratacoes, setContratacoes] = useState<Contratacao[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [query, setQuery] = useState('');
+  const [total, setTotal] = useState(0);
 
   const loadContratacoes = useCallback(async () => {
     if (!token) {
@@ -21,8 +44,9 @@ export function HomeScreen() {
     try {
       setError('');
       setIsLoading(true);
-      const response = await listContratacoes(token, 5);
+      const response = await listContratacoes(token, opportunitiesLimit);
       setContratacoes(response.data);
+      setTotal(response.total || response.data.length);
     } catch {
       setError('Nao foi possivel carregar as licitacoes agora.');
     } finally {
@@ -34,132 +58,178 @@ export function HomeScreen() {
     void loadContratacoes();
   }, [loadContratacoes]);
 
-  const handleSignOutPress = (): void => {
-    void signOut();
+  const filteredContratacoes = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase('pt-BR');
+
+    if (!normalizedQuery) {
+      return contratacoes;
+    }
+
+    return contratacoes.filter((item) => {
+      const searchableText = [
+        item.objetoCompra,
+        item.modalidadeNome,
+        item.orgaoEntidade?.razaoSocial,
+        item.unidadeOrgao?.nomeUnidade,
+        item.unidadeOrgao?.municipioNome,
+        item.unidadeOrgao?.ufSigla,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('pt-BR');
+
+      return searchableText.includes(normalizedQuery);
+    });
+  }, [contratacoes, query]);
+
+  const columns = useMemo(() => splitIntoColumns(filteredContratacoes), [filteredContratacoes]);
+
+  const handleClearSearch = (): void => {
+    setQuery('');
   };
 
+  const visibleCount = total || contratacoes.length;
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.textGroup}>
-          <Text style={styles.eyebrow}>Bem-vindo(a), {user?.firstName}</Text>
-          <Text style={styles.title}>Licitações disponíveis</Text>
-          <Text style={styles.description}>
-            Dados carregados do MongoDB Atlas pela API autenticada.
-          </Text>
-        </View>
+    <SafeAreaView edges={['top']} style={styles.container}>
+      <View style={styles.hero}>
+        <Text style={styles.heroTitle}>Existem {visibleCount} novos editais para o seu CNAE hoje</Text>
+      </View>
 
-        <Button title="Atualizar" onPress={loadContratacoes} />
+      <View style={styles.body}>
+        <HomeSearchBar query={query} onChangeQuery={setQuery} onClear={handleClearSearch} />
+        <HomeFilterTabs activeFilter={activeFilter} onChangeFilter={setActiveFilter} />
 
-        {isLoading ? <ActivityIndicator color={colors.primary} style={styles.loading} /> : null}
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              colors={[colors.primary]}
+              onRefresh={loadContratacoes}
+              refreshing={isLoading}
+              tintColor={colors.primary}
+            />
+          }
+          showsVerticalScrollIndicator={false}>
+          {isLoading && contratacoes.length === 0 ? (
+            <ActivityIndicator color={colors.primary} style={styles.feedback} />
+          ) : null}
 
-        <View style={styles.list}>
-          {contratacoes.map((item) => (
-            <View key={item._id} style={styles.item}>
-              <Text numberOfLines={2} style={styles.itemTitle}>
-                {item.objetoCompra || 'Objeto nao informado'}
-              </Text>
-              <Text style={styles.itemMeta}>
-                {item.unidadeOrgao?.municipioNome || 'Municipio'} / {item.unidadeOrgao?.ufSigla || 'UF'}
-              </Text>
-              <Text style={styles.itemMeta}>{item.modalidadeNome || 'Modalidade nao informada'}</Text>
-              <Text style={styles.itemValue}>
-                Valor estimado: {formatCurrency(item.valorTotalEstimado)}
-              </Text>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          {!isLoading && !error && filteredContratacoes.length === 0 ? (
+            <Text style={styles.emptyText}>Nenhum edital encontrado para os filtros selecionados.</Text>
+          ) : null}
+
+          <View style={styles.grid}>
+            <View style={styles.column}>
+              {columns.left.map(({ item, originalIndex, variant }) => (
+                <OpportunityCard
+                  compatibility={getCompatibilityScore(originalIndex)}
+                  item={item}
+                  key={item._id}
+                  variant={variant}
+                />
+              ))}
             </View>
-          ))}
-        </View>
 
-        <TouchableOpacity activeOpacity={0.7} onPress={handleSignOutPress} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Sair da conta</Text>
-        </TouchableOpacity>
-      </ScrollView>
+            <View style={[styles.column, styles.rightColumn]}>
+              {columns.right.map(({ item, originalIndex, variant }) => (
+                <OpportunityCard
+                  compatibility={getCompatibilityScore(originalIndex)}
+                  item={item}
+                  key={item._id}
+                  variant={variant}
+                />
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
-function formatCurrency(value?: number): string {
-  if (typeof value !== 'number') {
-    return 'nao informado';
-  }
+function splitIntoColumns(items: Contratacao[]): OpportunityColumns {
+  return items.reduce<OpportunityColumns>(
+    (columns, item, index) => {
+      const columnItem: OpportunityColumnItem = {
+        item,
+        originalIndex: index,
+        variant: index % 3 === 0 ? 'compact' : 'media',
+      };
 
-  return Intl.NumberFormat('pt-BR', {
-    currency: 'BRL',
-    style: 'currency',
-  }).format(value);
+      if (index % 2 === 0) {
+        columns.left.push(columnItem);
+      } else {
+        columns.right.push(columnItem);
+      }
+
+      return columns;
+    },
+    {
+      left: [],
+      right: [],
+    },
+  );
+}
+
+function getCompatibilityScore(index: number): number {
+  return compatibilityScores[index % compatibilityScores.length];
 }
 
 const styles = StyleSheet.create({
+  body: {
+    backgroundColor: colors.white,
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    rowGap: spacing.lg,
+  },
+  column: {
+    flex: 1,
+  },
   container: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.primary,
     flex: 1,
   },
   content: {
-    paddingBottom: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
   },
-  description: {
+  emptyText: {
     ...typography.body,
     color: colors.textSecondary,
-    lineHeight: spacing.lg,
+    marginTop: spacing.xl,
+    textAlign: 'center',
   },
   errorText: {
     ...typography.body,
-    color: '#B42318',
-    marginTop: spacing.md,
+    color: colors.error,
+    marginTop: spacing.xl,
     textAlign: 'center',
   },
-  eyebrow: {
-    ...typography.body,
-    color: colors.primary,
-    marginBottom: spacing.xs,
-  },
-  item: {
-    backgroundColor: colors.white,
-    borderColor: colors.grayLight,
-    borderRadius: spacing.sm,
-    borderWidth: 1,
-    padding: spacing.md,
-    rowGap: spacing.xs,
-  },
-  itemMeta: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  itemTitle: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '700',
-  },
-  itemValue: {
-    ...typography.body,
-    color: colors.primaryDark,
-    fontWeight: '700',
-  },
-  list: {
-    marginTop: spacing.lg,
-    rowGap: spacing.md,
-  },
-  loading: {
-    marginTop: spacing.lg,
-  },
-  logoutButton: {
-    alignSelf: 'center',
+  feedback: {
     marginTop: spacing.xl,
   },
-  logoutText: {
-    ...typography.button,
-    color: colors.primary,
+  grid: {
+    flexDirection: 'row',
+    paddingTop: spacing.xl,
   },
-  textGroup: {
-    marginBottom: spacing.xl,
+  hero: {
+    backgroundColor: colors.primary,
+    justifyContent: 'flex-end',
+    minHeight: 72,
+    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
-  title: {
-    ...typography.title,
+  heroTitle: {
+    ...typography.body,
     color: colors.text,
-    marginBottom: spacing.sm,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  rightColumn: {
+    marginLeft: spacing.md,
   },
 });
 

@@ -6,9 +6,13 @@ export type Contratacao = {
   dataEncerramentoProposta?: string;
   modalidadeNome?: string;
   numeroCompra?: string;
+  orgaoEntidade?: {
+    razaoSocial?: string;
+  };
   objetoCompra?: string;
   situacaoCompraNome?: string;
   unidadeOrgao?: {
+    nomeUnidade?: string;
     municipioNome?: string;
     ufSigla?: string;
   };

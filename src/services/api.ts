@@ -39,7 +39,7 @@ export async function apiRequest<TResponse>(
     method: options.method || 'GET',
   });
   const isJson = response.headers.get('content-type')?.includes('application/json');
-  const data = isJson ? await response.json() : null;
+  const data = isJson && response.status !== 204 ? await response.json() : null;
 
   if (!response.ok) {
     throw new ApiError(data?.message || 'Erro ao comunicar com a API.', response.status, data?.details);
