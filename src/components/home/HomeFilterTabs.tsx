@@ -15,9 +15,9 @@ export interface HomeFilterTabsProps {
 }
 
 const filterOptions: FilterOption[] = [
-  { label: 'Exclusivo MEI', value: 'mei' },
+  { label: 'Oportunidades MEI', value: 'mei' },
   { label: 'Recife/PE', value: 'location' },
-  { label: 'Meus CNAES', value: 'cnaes' },
+  { label: 'Meu CNAE', value: 'cnaes' },
 ];
 
 export function HomeFilterTabs({ activeFilter, onChangeFilter }: HomeFilterTabsProps) {

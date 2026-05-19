@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,6 +26,7 @@ import {
 } from '../services';
 import { useAuth, useLicitacoesStream } from '../store';
 import { colors, spacing, typography } from '../theme';
+import type { RootStackParamList } from '../types/navigation';
 import { configureNextLayoutAnimation } from '../utils/motion';
 
 type AlertTab = 'calendar' | 'list';
@@ -94,6 +96,7 @@ const detailLabels: Partial<Record<AlertKind, string>> = {
 };
 
 export function AlertsScreen() {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { token } = useAuth();
   const { eventSequence, isConnected, novaLicitacao } = useLicitacoesStream();
   const today = useMemo(() => new Date(), []);
@@ -263,7 +266,18 @@ export function AlertsScreen() {
       }
     }
 
+    const actionButtons =
+      alert.relatedType === 'contratacao' && alert.relatedId
+        ? [
+            {
+              text: 'Ver oportunidade',
+              onPress: () => navigation.navigate('OpportunityDetail', { id: alert.relatedId || '' }),
+            },
+          ]
+        : [];
+
     Alert.alert(alert.title, `${alert.description}\n${alertKindStyles[alert.kind].label}`, [
+      ...actionButtons,
       {
         text: 'Resolver',
         onPress: () => {

@@ -1,5 +1,14 @@
+import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StreamingNotice } from '../components/StreamingNotice';
@@ -14,6 +23,7 @@ import type { StreamingLicitacao } from '../hooks';
 import { listContratacoes, type Contratacao } from '../services';
 import { useAuth, useLicitacoesStream } from '../store';
 import { colors, spacing, typography } from '../theme';
+import type { RootStackParamList } from '../types/navigation';
 import { configureNextLayoutAnimation } from '../utils/motion';
 
 type OpportunityColumnItem = {
@@ -31,15 +41,19 @@ const opportunitiesLimit = 12;
 const compatibilityScores = [80, 76, 92, 84, 88, 72];
 
 export function HomeScreen() {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { token } = useAuth();
   const { eventSequence, isConnected, novaLicitacao } = useLicitacoesStream();
   const [activeFilter, setActiveFilter] = useState<HomeFilter>('mei');
   const [contratacoes, setContratacoes] = useState<Contratacao[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [municipioFilter, setMunicipioFilter] = useState('Recife');
   const [query, setQuery] = useState('');
   const [streamNotice, setStreamNotice] = useState<{ description: string; title: string } | null>(null);
+  const [statusFilter, setStatusFilter] = useState('');
   const [total, setTotal] = useState(0);
+  const [ufFilter, setUfFilter] = useState('PE');
   const processedStreamSequence = useRef(0);
 
   const loadContratacoes = useCallback(async () => {
@@ -53,9 +67,11 @@ export function HomeScreen() {
       const response = await listContratacoes(token, {
         limit: opportunitiesLimit,
         meOnly: activeFilter === 'mei' ? true : undefined,
-        municipio: activeFilter === 'location' ? 'Recife' : undefined,
+        municipio: activeFilter === 'location' ? municipioFilter.trim() : undefined,
+        q: query.trim() || undefined,
         skip: 0,
-        uf: activeFilter === 'location' ? 'PE' : undefined,
+        status: statusFilter.trim() || undefined,
+        uf: activeFilter === 'location' ? ufFilter.trim().toLocaleUpperCase('pt-BR') : undefined,
       });
       setContratacoes(response.data);
       setTotal(response.total || response.data.length);
@@ -64,10 +80,14 @@ export function HomeScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeFilter, token]);
+  }, [activeFilter, municipioFilter, query, statusFilter, token, ufFilter]);
 
   useEffect(() => {
-    void loadContratacoes();
+    const timeoutId = setTimeout(() => {
+      void loadContratacoes();
+    }, 350);
+
+    return () => clearTimeout(timeoutId);
   }, [loadContratacoes]);
 
   useEffect(() => {
@@ -103,33 +123,7 @@ export function HomeScreen() {
     return () => clearTimeout(timeoutId);
   }, [streamNotice]);
 
-  const filteredContratacoes = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase('pt-BR');
-
-    if (!normalizedQuery) {
-      return contratacoes;
-    }
-
-    return contratacoes.filter((item) => {
-      const searchableText = [
-        item.objetoCompra,
-        item.modalidadeNome,
-        item.orgaoEntidade?.razaoSocial,
-        item.municipioNome,
-        item.uf,
-        item.unidadeOrgao?.nomeUnidade,
-        item.unidadeOrgao?.municipioNome,
-        item.unidadeOrgao?.ufSigla,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLocaleLowerCase('pt-BR');
-
-      return searchableText.includes(normalizedQuery);
-    });
-  }, [contratacoes, query]);
-
-  const columns = useMemo(() => splitIntoColumns(filteredContratacoes), [filteredContratacoes]);
+  const columns = useMemo(() => splitIntoColumns(contratacoes), [contratacoes]);
 
   const handleClearSearch = (): void => {
     setQuery('');
@@ -140,12 +134,39 @@ export function HomeScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <View style={styles.hero}>
-        <Text style={styles.heroTitle}>Existem {visibleCount} novos editais para o seu CNAE hoje</Text>
+        <Text style={styles.heroTitle}>Encontramos {visibleCount} oportunidades para o seu perfil</Text>
       </View>
 
       <View style={styles.body}>
         <HomeSearchBar query={query} onChangeQuery={setQuery} onClear={handleClearSearch} />
         <HomeFilterTabs activeFilter={activeFilter} onChangeFilter={setActiveFilter} />
+        <View style={styles.filterRow}>
+          <TextInput
+            autoCapitalize="words"
+            onChangeText={setMunicipioFilter}
+            placeholder="Cidade"
+            placeholderTextColor={colors.textSecondary}
+            style={styles.filterInput}
+            value={municipioFilter}
+          />
+          <TextInput
+            autoCapitalize="characters"
+            maxLength={2}
+            onChangeText={(value) => setUfFilter(value.toLocaleUpperCase('pt-BR'))}
+            placeholder="UF"
+            placeholderTextColor={colors.textSecondary}
+            style={[styles.filterInput, styles.ufInput]}
+            value={ufFilter}
+          />
+          <TextInput
+            autoCapitalize="words"
+            onChangeText={setStatusFilter}
+            placeholder="Status"
+            placeholderTextColor={colors.textSecondary}
+            style={styles.filterInput}
+            value={statusFilter}
+          />
+        </View>
         <View style={styles.liveStatus}>
           <View style={[styles.liveDot, isConnected ? styles.liveDotOn : styles.liveDotOff]} />
           <Text style={styles.liveStatusText}>
@@ -173,7 +194,7 @@ export function HomeScreen() {
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          {!isLoading && !error && filteredContratacoes.length === 0 ? (
+          {!isLoading && !error && contratacoes.length === 0 ? (
             <Text style={styles.emptyText}>Nenhum edital encontrado para os filtros selecionados.</Text>
           ) : null}
 
@@ -184,6 +205,7 @@ export function HomeScreen() {
                   compatibility={getCompatibilityScore(originalIndex, item)}
                   item={item}
                   key={item._id}
+                  onPress={() => navigation.navigate('OpportunityDetail', { id: item._id })}
                   variant={variant}
                 />
               ))}
@@ -195,6 +217,7 @@ export function HomeScreen() {
                   compatibility={getCompatibilityScore(originalIndex, item)}
                   item={item}
                   key={item._id}
+                  onPress={() => navigation.navigate('OpportunityDetail', { id: item._id })}
                   variant={variant}
                 />
               ))}
@@ -295,6 +318,21 @@ const styles = StyleSheet.create({
   feedback: {
     marginTop: spacing.xl,
   },
+  filterInput: {
+    ...typography.caption,
+    backgroundColor: colors.surface,
+    borderColor: colors.surfaceMuted,
+    borderRadius: 14,
+    borderWidth: 1,
+    color: colors.text,
+    flex: 1,
+    minHeight: 44,
+    paddingHorizontal: spacing.md,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    columnGap: spacing.sm,
+  },
   grid: {
     flexDirection: 'row',
     paddingTop: spacing.xl,
@@ -340,6 +378,10 @@ const styles = StyleSheet.create({
   },
   rightColumn: {
     marginLeft: spacing.md,
+  },
+  ufInput: {
+    flex: 0.46,
+    textAlign: 'center',
   },
 });
 

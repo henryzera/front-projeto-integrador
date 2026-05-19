@@ -33,7 +33,6 @@ export type CreateDocumentPayload = {
   categoryId: string;
   categoryTitle?: string;
   expiresAt?: string;
-  fileUrl?: string;
   name: string;
   status?: DocumentStatus;
 };

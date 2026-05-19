@@ -2,6 +2,9 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Login: undefined;
   MainTabs: undefined;
+  OpportunityDetail: {
+    id: string;
+  };
   Register: undefined;
 };
 

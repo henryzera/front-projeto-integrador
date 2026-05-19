@@ -64,8 +64,6 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
     navigation.navigate('Register');
   };
 
-  const handleForgotPasswordPress = (): void => {};
-
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={keyboardAvoidingBehavior} style={styles.keyboardView}>
@@ -93,10 +91,6 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
               value={password}
             />
 
-            <TouchableOpacity activeOpacity={0.7} onPress={handleForgotPasswordPress}>
-              <Text style={styles.forgotPassword}>Esqueci minha senha</Text>
-            </TouchableOpacity>
-
             {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
 
             <AuthButton title="Entrar" onPress={handleLoginPress} isLoading={isSubmitting} />
@@ -122,11 +116,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
-  },
-  forgotPassword: {
-    ...typography.body,
-    color: colors.primary,
-    textAlign: 'center',
   },
   form: {
     rowGap: spacing.md,

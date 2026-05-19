@@ -7,6 +7,11 @@ type ApiRequestOptions = {
 };
 
 const requestTimeoutMs = 20000;
+let unauthorizedHandler: (() => void | Promise<void>) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void | Promise<void>) | null): void {
+  unauthorizedHandler = handler;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -60,6 +65,10 @@ export async function apiRequest<TResponse>(
   const data = isJson && response.status !== 204 ? await response.json() : null;
 
   if (!response.ok) {
+    if (response.status === 401) {
+      await unauthorizedHandler?.();
+    }
+
     throw new ApiError(data?.message || 'Erro ao comunicar com a API.', response.status, data?.details);
   }
 

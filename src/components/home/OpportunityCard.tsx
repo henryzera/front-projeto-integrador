@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { AnimatedPressable } from '../AnimatedPressable';
 import type { Contratacao } from '../../services';
 import { colors, spacing, typography } from '../../theme';
 
@@ -9,15 +10,20 @@ export type OpportunityCardVariant = 'compact' | 'media';
 export interface OpportunityCardProps {
   item: Contratacao;
   compatibility: number;
+  onPress?: () => void;
   variant: OpportunityCardVariant;
 }
 
-export function OpportunityCard({ item, compatibility, variant }: OpportunityCardProps) {
+export function OpportunityCard({ item, compatibility, onPress, variant }: OpportunityCardProps) {
   const title = item.objetoCompra || 'Objeto da licitação';
   const issuer = getIssuer(item);
 
   return (
-    <View style={styles.container}>
+    <AnimatedPressable
+      accessibilityLabel={`${title}. ${compatibility}% compatível`}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.container, pressed && styles.pressed]}
+      onPress={onPress}>
       <View style={[styles.media, variant === 'compact' ? styles.compactMedia : styles.largeMedia]}>
         <Ionicons color={colors.iconMuted} name="image" size={24} />
         {variant === 'media' ? (
@@ -42,7 +48,7 @@ export function OpportunityCard({ item, compatibility, variant }: OpportunityCar
 
         <Ionicons color={colors.text} name="arrow-forward" size={24} />
       </View>
-    </View>
+    </AnimatedPressable>
   );
 }
 
@@ -153,6 +159,9 @@ const styles = StyleSheet.create({
     right: spacing.sm,
     top: spacing.md,
     width: spacing.xl,
+  },
+  pressed: {
+    opacity: 0.78,
   },
   textContent: {
     flex: 1,

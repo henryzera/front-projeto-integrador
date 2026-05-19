@@ -6,7 +6,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { MainTabNavigator } from "./MainTabNavigator";
 import { LoginScreen } from "../screens/LoginScreen";
-import { OnboardingScreen } from "../screens/OnboardingScreen";
+import { OpportunityDetailScreen } from "../screens/OpportunityDetailScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
 
 import { useAuth } from "../store";
@@ -33,7 +33,7 @@ const screenOptions: NativeStackNavigationOptions = {
 };
 
 export function AppNavigator() {
-  const { didSignOut, isLoading, user } = useAuth();
+  const { isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -48,10 +48,12 @@ export function AppNavigator() {
       screenOptions={screenOptions}
     >
       {user ? (
-        <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+        <Stack.Group>
+          <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+          <Stack.Screen name="OpportunityDetail" component={OpportunityDetailScreen} />
+        </Stack.Group>
       ) : (
         <Stack.Group>
-          {didSignOut ? null : <Stack.Screen name="Onboarding" component={OnboardingScreen} />}
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
         </Stack.Group>

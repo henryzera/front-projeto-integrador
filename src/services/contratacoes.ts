@@ -5,8 +5,13 @@ export type Contratacao = {
   anoCompra?: number;
   codigoIbge?: string;
   compatibilityScore?: number;
+  dataAberturaProposta?: string;
   dataAtualizacao?: string;
   dataEncerramentoProposta?: string;
+  linkOficial?: string;
+  linkProcessoEletronico?: string;
+  linkSistemaOrigem?: string;
+  linksOficiais?: OfficialLink[];
   modalidadeNome?: string;
   municipioNome?: string;
   numeroCompra?: string;
@@ -25,9 +30,31 @@ export type Contratacao = {
   valorTotalEstimado?: number;
 };
 
+export type OfficialLink = {
+  label?: string;
+  type?: string;
+  url: string;
+};
+
+export type DadosOrgao = {
+  cnpj?: string;
+  codigoIbge?: string;
+  municipio?: string;
+  razaoSocial?: string;
+  uf?: string;
+  unidade?: string;
+};
+
+export type DatasImportantes = {
+  aberturaProposta?: string;
+  encerramentoProposta?: string;
+  publicacaoPncp?: string;
+  ultimaAtualizacao?: string;
+};
+
 export type ContratacaoDetail = Contratacao & {
-  dadosOrgao?: unknown;
-  datasImportantes?: unknown[];
+  dadosOrgao?: DadosOrgao;
+  datasImportantes?: DatasImportantes;
   documentosExigidos?: string[];
   requisitos?: string[];
   statusOportunidade?: string;

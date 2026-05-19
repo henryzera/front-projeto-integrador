@@ -5,18 +5,23 @@ import {
   Alert,
   Animated,
   Easing,
+  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '../components/AnimatedPressable';
 import {
+  createDocument,
+  deleteDocument,
   getDocumentsSummary,
   listDocuments,
+  updateDocument,
   type DocumentGroup,
   type DocumentsSummary,
   type DocumentStatus,
@@ -39,6 +44,13 @@ const emptySummary: DocumentsSummary = {
   healthPercent: 0,
   pendingCount: 0,
 };
+
+const statusOptions: { label: string; status: DocumentStatus }[] = [
+  { label: 'Pendente', status: 'pending' },
+  { label: 'Em dia', status: 'ok' },
+  { label: 'Atenção', status: 'attention' },
+  { label: 'Vencido', status: 'expired' },
+];
 
 const statusStyles: Record<DocumentStatus, StatusStyle> = {
   attention: {
@@ -69,10 +81,15 @@ const statusStyles: Record<DocumentStatus, StatusStyle> = {
 
 export function DocumentsScreen() {
   const { token } = useAuth();
+  const [categoryTitle, setCategoryTitle] = useState('Regularidade Fiscal');
   const [documentGroups, setDocumentGroups] = useState<DocumentGroup[]>([]);
   const [error, setError] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
   const [expandedGroupId, setExpandedGroupId] = useState<string | undefined>();
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [newDocumentName, setNewDocumentName] = useState('');
   const [summary, setSummary] = useState<DocumentsSummary>(emptySummary);
   const healthProgress = useRef(new Animated.Value(0)).current;
   const screenProgress = useRef(new Animated.Value(0)).current;
@@ -105,10 +122,95 @@ export function DocumentsScreen() {
     setExpandedGroupId((currentGroupId) => (currentGroupId === groupId ? undefined : groupId));
   };
 
-  const handleUploadPress = (): void => {
+  const handleOpenCreateModal = (): void => {
+    setCategoryTitle(documentGroups[0]?.title || 'Regularidade Fiscal');
+    setExpiresAt('');
+    setNewDocumentName('');
+    setIsCreateModalVisible(true);
+  };
+
+  const handleCreateDocument = async (): Promise<void> => {
+    if (!token || !newDocumentName.trim()) {
+      setError('Informe o nome do item do checklist.');
+      return;
+    }
+
+    try {
+      setError('');
+      setIsSaving(true);
+      await createDocument(token, {
+        categoryId: slugify(categoryTitle),
+        categoryTitle: categoryTitle.trim() || 'Checklist do MEI',
+        expiresAt: toIsoDate(expiresAt),
+        name: newDocumentName.trim(),
+        status: 'pending',
+      });
+      setIsCreateModalVisible(false);
+      await loadDocuments();
+    } catch {
+      setError('Nao foi possivel criar o item do checklist.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateStatus = async (document: UserDocument, status: DocumentStatus): Promise<void> => {
+    if (!token) {
+      return;
+    }
+
+    try {
+      setError('');
+      await updateDocument(token, document.id, { status });
+      await loadDocuments();
+    } catch {
+      setError('Nao foi possivel atualizar este item agora.');
+    }
+  };
+
+  const handleDeleteDocument = async (document: UserDocument): Promise<void> => {
+    if (!token) {
+      return;
+    }
+
+    try {
+      setError('');
+      await deleteDocument(token, document.id);
+      await loadDocuments();
+    } catch {
+      setError('Nao foi possivel remover este item agora.');
+    }
+  };
+
+  const handleDocumentPress = (document: UserDocument): void => {
     Alert.alert(
-      'Envio de documento',
-      'O fluxo de envio ainda está mockado, mas este será o atalho para anexar novas certidões.',
+      document.name,
+      'Atualize o status deste item do checklist educativo.',
+      [
+        ...statusOptions.map((option) => ({
+          text: option.label,
+          onPress: () => {
+            void handleUpdateStatus(document, option.status);
+          },
+        })),
+        {
+          style: 'destructive' as const,
+          text: 'Remover',
+          onPress: () => {
+            Alert.alert('Remover item', 'Deseja remover este item do checklist?', [
+              { style: 'cancel', text: 'Cancelar' },
+              {
+                style: 'destructive',
+                text: 'Remover',
+                onPress: () => {
+                  void handleDeleteDocument(document);
+                },
+              },
+            ]);
+          },
+        },
+        { style: 'cancel', text: 'Cancelar' },
+      ],
     );
   };
 
@@ -178,13 +280,18 @@ export function DocumentsScreen() {
             </View>
 
             <AnimatedPressable
-              accessibilityLabel="Enviar novo documento"
+              accessibilityLabel="Adicionar item ao checklist"
               accessibilityRole="button"
-              style={({ pressed }) => [styles.uploadButton, pressed && styles.pressed]}
-              onPress={handleUploadPress}>
-              <Ionicons color={colors.primaryDark} name="cloud-upload-outline" size={36} />
+              style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+              onPress={handleOpenCreateModal}>
+              <Ionicons color={colors.primaryDark} name="add" size={28} />
+              <Text style={styles.addButtonText}>Item</Text>
             </AnimatedPressable>
           </View>
+
+          <Text style={styles.educationalNote}>
+            Use este checklist para se preparar. Ele nao substitui certidoes oficiais nem valida sua habilitacao juridica.
+          </Text>
 
           <View style={styles.insightRow}>
             <View style={styles.insightItem}>
@@ -238,7 +345,12 @@ export function DocumentsScreen() {
                   {isExpanded ? (
                     <View style={styles.documentList}>
                       {group.documents.map((document, index) => (
-                        <DocumentRow document={document} index={index} key={document.id} />
+                        <DocumentRow
+                          document={document}
+                          index={index}
+                          key={document.id}
+                          onPress={() => handleDocumentPress(document)}
+                        />
                       ))}
                     </View>
                   ) : null}
@@ -247,12 +359,72 @@ export function DocumentsScreen() {
             })}
           </View>
         </ScrollView>
+
+        <Modal animationType="slide" transparent visible={isCreateModalVisible}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Novo item do checklist</Text>
+              <TextInput
+                onChangeText={setNewDocumentName}
+                placeholder="Ex: Certidao municipal"
+                placeholderTextColor={colors.textSecondary}
+                style={styles.modalInput}
+                value={newDocumentName}
+              />
+              <TextInput
+                onChangeText={setCategoryTitle}
+                placeholder="Categoria"
+                placeholderTextColor={colors.textSecondary}
+                style={styles.modalInput}
+                value={categoryTitle}
+              />
+              <TextInput
+                keyboardType="numbers-and-punctuation"
+                onChangeText={setExpiresAt}
+                placeholder="Vencimento opcional: AAAA-MM-DD"
+                placeholderTextColor={colors.textSecondary}
+                style={styles.modalInput}
+                value={expiresAt}
+              />
+              <View style={styles.modalActions}>
+                <AnimatedPressable
+                  accessibilityRole="button"
+                  disabled={isSaving}
+                  style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+                  onPress={() => setIsCreateModalVisible(false)}>
+                  <Text style={styles.secondaryButtonText}>Cancelar</Text>
+                </AnimatedPressable>
+                <AnimatedPressable
+                  accessibilityRole="button"
+                  disabled={isSaving}
+                  style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
+                  onPress={() => {
+                    void handleCreateDocument();
+                  }}>
+                  {isSaving ? (
+                    <ActivityIndicator color={colors.white} size="small" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Criar</Text>
+                  )}
+                </AnimatedPressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </Animated.View>
     </SafeAreaView>
   );
 }
 
-function DocumentRow({ document, index }: { document: UserDocument; index: number }) {
+function DocumentRow({
+  document,
+  index,
+  onPress,
+}: {
+  document: UserDocument;
+  index: number;
+  onPress: () => void;
+}) {
   const status = statusStyles[document.status];
   const itemProgress = useRef(new Animated.Value(0)).current;
 
@@ -283,6 +455,11 @@ function DocumentRow({ document, index }: { document: UserDocument; index: numbe
           ],
         },
       ]}>
+      <AnimatedPressable
+        accessibilityLabel={`${document.name}. ${status.label}`}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.documentAction, pressed && styles.pressed]}
+        onPress={onPress}>
       <View style={styles.documentIcon}>
         <Ionicons color={colors.primaryDark} name="document-text-outline" size={20} />
       </View>
@@ -300,6 +477,7 @@ function DocumentRow({ document, index }: { document: UserDocument; index: numbe
         <Ionicons color={status.color} name={status.icon} size={13} />
         <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
       </View>
+      </AnimatedPressable>
     </Animated.View>
   );
 }
@@ -336,7 +514,45 @@ function formatDate(value: string): string {
   return Intl.DateTimeFormat('pt-BR').format(date);
 }
 
+function slugify(value: string): string {
+  return (
+    value
+      .trim()
+      .toLocaleLowerCase('pt-BR')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') || 'checklist-mei'
+  );
+}
+
+function toIsoDate(value: string): string | undefined {
+  if (!value.trim()) {
+    return undefined;
+  }
+
+  const date = new Date(`${value.trim()}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  return date.toISOString();
+}
+
 const styles = StyleSheet.create({
+  addButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 20,
+    height: 64,
+    justifyContent: 'center',
+    width: 72,
+  },
+  addButtonText: {
+    ...typography.tabLabel,
+    color: colors.primaryDark,
+  },
   body: {
     backgroundColor: colors.white,
     flex: 1,
@@ -389,6 +605,15 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  documentAction: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    minHeight: 64,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    columnGap: spacing.sm,
+  },
   documentList: {
     marginTop: spacing.sm,
     rowGap: spacing.sm,
@@ -399,16 +624,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   documentRow: {
-    alignItems: 'center',
     backgroundColor: colors.white,
     borderColor: colors.surfaceMuted,
     borderRadius: 18,
     borderWidth: 1,
-    flexDirection: 'row',
-    minHeight: 64,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    columnGap: spacing.sm,
+    overflow: 'hidden',
+  },
+  educationalNote: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginTop: spacing.sm,
   },
   groupBlock: {
     marginBottom: spacing.sm,
@@ -495,6 +721,48 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.7,
   },
+  modalActions: {
+    flexDirection: 'row',
+    columnGap: spacing.sm,
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    padding: spacing.lg,
+    rowGap: spacing.md,
+  },
+  modalInput: {
+    ...typography.body,
+    backgroundColor: colors.surface,
+    borderColor: colors.surfaceMuted,
+    borderRadius: 14,
+    borderWidth: 1,
+    color: colors.text,
+    minHeight: 50,
+    paddingHorizontal: spacing.md,
+  },
+  modalOverlay: {
+    backgroundColor: 'rgba(0,0,0,0.24)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalTitle: {
+    ...typography.title,
+    color: colors.text,
+  },
+  primaryButton: {
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    flex: 1,
+    minHeight: 50,
+    justifyContent: 'center',
+  },
+  primaryButtonText: {
+    ...typography.button,
+    color: colors.white,
+  },
   progressFill: {
     backgroundColor: colors.primary,
     borderRadius: 999,
@@ -524,13 +792,18 @@ const styles = StyleSheet.create({
     ...typography.tabLabel,
     fontSize: 11,
   },
-  uploadButton: {
+  secondaryButton: {
     alignItems: 'center',
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 20,
-    height: 64,
+    borderColor: colors.surfaceMuted,
+    borderRadius: 16,
+    borderWidth: 1,
+    flex: 1,
+    minHeight: 50,
     justifyContent: 'center',
-    width: 64,
+  },
+  secondaryButtonText: {
+    ...typography.button,
+    color: colors.text,
   },
 });
 
