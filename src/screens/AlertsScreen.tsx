@@ -1,23 +1,32 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '../components/AnimatedPressable';
+import {
+  listAlerts,
+  markAlertAsRead,
+  resolveAlert,
+  type AlertKind,
+  type DeadlineAlert,
+} from '../services';
+import { useAuth } from '../store';
 import { colors, spacing, typography } from '../theme';
 import { configureNextLayoutAnimation } from '../utils/motion';
 
 type AlertTab = 'calendar' | 'list';
 type AlertFilter = 'action' | 'all';
-type AlertKind = 'documentExpired' | 'info' | 'proposalCritical' | 'proposalSafe' | 'proposalSoon';
-
-type DeadlineAlert = {
-  date: string;
-  description: string;
-  id: string;
-  kind: AlertKind;
-  title: string;
-};
 
 type CalendarDay = {
   date: Date;
@@ -37,79 +46,20 @@ const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set
 const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 const shortWeekdayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-const alerts: DeadlineAlert[] = [
-  {
-    date: '2025-09-09',
-    description: 'Vencido há 2 dias',
-    id: 'doc-cnd-vencida',
-    kind: 'documentExpired',
-    title: 'Documento vencido',
-  },
-  {
-    date: '2025-09-09',
-    description: 'Prazo encerra em 24 horas',
-    id: 'proposta-24h',
-    kind: 'proposalCritical',
-    title: 'Entrega de proposta',
-  },
-  {
-    date: '2025-09-12',
-    description: 'Prazo encerra em 3 dias',
-    id: 'proposta-3d',
-    kind: 'proposalSoon',
-    title: 'Entrega de proposta',
-  },
-  {
-    date: '2025-09-13',
-    description: 'Faltam duas semanas',
-    id: 'proposta-2s',
-    kind: 'proposalSafe',
-    title: 'Entrega de proposta',
-  },
-  {
-    date: '2025-09-10',
-    description: 'Novo edital publicado',
-    id: 'edital-publicado',
-    kind: 'info',
-    title: 'Edital',
-  },
-  {
-    date: '2025-09-11',
-    description: 'Prazo para enviar certidões',
-    id: 'documentos-habilitacao',
-    kind: 'proposalCritical',
-    title: 'Habilitação documental',
-  },
-  {
-    date: '2025-09-09',
-    description: 'Esclarecimentos até 18h',
-    id: 'esclarecimentos',
-    kind: 'proposalSoon',
-    title: 'Prazo intermediário',
-  },
-  {
-    date: '2025-09-09',
-    description: 'Novo edital compatível com seu perfil',
-    id: 'perfil-compativel',
-    kind: 'info',
-    title: 'Informativo',
-  },
-];
-
 const alertKindStyles: Record<AlertKind, AlertKindStyle> = {
   documentExpired: {
     backgroundColor: '#FFE8EA',
     color: '#D92D32',
     dotColor: '#FF3B45',
     label: 'Vencido',
-    priority: 0,
+    priority: 1,
   },
   info: {
     backgroundColor: '#D9ECFF',
     color: '#1676D2',
     dotColor: '#349DF5',
     label: 'Informativo',
-    priority: 4,
+    priority: 5,
   },
   proposalCritical: {
     backgroundColor: '#FFD5DC',
@@ -123,7 +73,7 @@ const alertKindStyles: Record<AlertKind, AlertKindStyle> = {
     color: '#07953B',
     dotColor: '#00DD39',
     label: 'No prazo',
-    priority: 3,
+    priority: 4,
   },
   proposalSoon: {
     backgroundColor: '#FFF0B8',
@@ -142,18 +92,23 @@ const detailLabels: Partial<Record<AlertKind, string>> = {
 };
 
 export function AlertsScreen() {
+  const { token } = useAuth();
+  const today = useMemo(() => new Date(), []);
   const [activeTab, setActiveTab] = useState<AlertTab>('list');
+  const [alerts, setAlerts] = useState<DeadlineAlert[]>([]);
+  const [error, setError] = useState('');
   const [filter, setFilter] = useState<AlertFilter>('all');
-  const [calendarMonth, setCalendarMonth] = useState(8);
-  const [calendarYear, setCalendarYear] = useState(2025);
-  const [selectedDate, setSelectedDate] = useState('2025-09-09');
+  const [isLoading, setIsLoading] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(today.getMonth());
+  const [calendarYear, setCalendarYear] = useState(today.getFullYear());
+  const [selectedDate, setSelectedDate] = useState(toDateKey(today));
   const screenProgress = useRef(new Animated.Value(0)).current;
   const tabProgress = useRef(new Animated.Value(1)).current;
 
   const visibleAlerts = useMemo(() => {
     const sortedAlerts = [...alerts].sort((firstAlert, secondAlert) => {
-      const firstPriority = alertKindStyles[firstAlert.kind].priority;
-      const secondPriority = alertKindStyles[secondAlert.kind].priority;
+      const firstPriority = firstAlert.priority || alertKindStyles[firstAlert.kind].priority;
+      const secondPriority = secondAlert.priority || alertKindStyles[secondAlert.kind].priority;
 
       if (firstPriority !== secondPriority) {
         return firstPriority - secondPriority;
@@ -163,11 +118,11 @@ export function AlertsScreen() {
     });
 
     if (filter === 'action') {
-      return sortedAlerts.filter((alert) => alertKindStyles[alert.kind].priority <= 2);
+      return sortedAlerts.filter((alert) => (alert.priority || alertKindStyles[alert.kind].priority) <= 2);
     }
 
     return sortedAlerts;
-  }, [filter]);
+  }, [alerts, filter]);
 
   const calendarDays = useMemo(
     () => getCalendarDays(calendarYear, calendarMonth),
@@ -179,15 +134,38 @@ export function AlertsScreen() {
       alerts
         .filter((alert) => alert.date === selectedDate)
         .sort((firstAlert, secondAlert) => {
-          const firstPriority = alertKindStyles[firstAlert.kind].priority;
-          const secondPriority = alertKindStyles[secondAlert.kind].priority;
+          const firstPriority = firstAlert.priority || alertKindStyles[firstAlert.kind].priority;
+          const secondPriority = secondAlert.priority || alertKindStyles[secondAlert.kind].priority;
 
           return firstPriority - secondPriority;
         }),
-    [selectedDate],
+    [alerts, selectedDate],
   );
 
-  const actionCount = alerts.filter((alert) => alertKindStyles[alert.kind].priority <= 2).length;
+  const actionCount = alerts.filter((alert) => (alert.priority || alertKindStyles[alert.kind].priority) <= 2).length;
+
+  const loadAlerts = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    const { from, to } = getMonthRange(calendarYear, calendarMonth);
+
+    try {
+      setError('');
+      setIsLoading(true);
+      const response = await listAlerts(token, {
+        from,
+        to,
+        view: activeTab,
+      });
+      setAlerts(response.data);
+    } catch {
+      setError('Nao foi possivel carregar seus alertas agora.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeTab, calendarMonth, calendarYear, token]);
 
   const handleTabChange = (nextTab: AlertTab): void => {
     if (nextTab === activeTab) {
@@ -235,8 +213,47 @@ export function AlertsScreen() {
     setSelectedDate(date);
   };
 
-  const handleEventPress = (alert: DeadlineAlert): void => {
-    Alert.alert(alert.title, `${alert.description}\n${alertKindStyles[alert.kind].label}`);
+  const handleResolveAlert = async (alertId: string): Promise<void> => {
+    if (!token) {
+      return;
+    }
+
+    try {
+      const response = await resolveAlert(token, alertId);
+      setAlerts((currentAlerts) =>
+        currentAlerts.map((alert) => (alert.id === alertId ? { ...alert, ...response.alert } : alert)),
+      );
+    } catch {
+      setError('Nao foi possivel resolver o alerta agora.');
+    }
+  };
+
+  const handleEventPress = async (alert: DeadlineAlert): Promise<void> => {
+    if (token && alert.status === 'open') {
+      try {
+        const response = await markAlertAsRead(token, alert.id);
+        setAlerts((currentAlerts) =>
+          currentAlerts.map((currentAlert) =>
+            currentAlert.id === alert.id ? { ...currentAlert, ...response.alert } : currentAlert,
+          ),
+        );
+      } catch {
+        // A leitura do alerta nao deve impedir o usuario de ver o conteudo.
+      }
+    }
+
+    Alert.alert(alert.title, `${alert.description}\n${alertKindStyles[alert.kind].label}`, [
+      {
+        text: 'Resolver',
+        onPress: () => {
+          void handleResolveAlert(alert.id);
+        },
+      },
+      {
+        style: 'cancel',
+        text: 'OK',
+      },
+    ]);
   };
 
   useEffect(() => {
@@ -257,6 +274,10 @@ export function AlertsScreen() {
       useNativeDriver: true,
     }).start();
   }, [activeTab, tabProgress]);
+
+  useEffect(() => {
+    void loadAlerts();
+  }, [loadAlerts]);
 
   const screenMotionStyle = {
     opacity: screenProgress,
@@ -306,19 +327,26 @@ export function AlertsScreen() {
           {activeTab === 'list' ? (
             <ListTab
               actionCount={actionCount}
+              error={error}
               filter={filter}
+              isLoading={isLoading}
+              onRefresh={loadAlerts}
               onEventPress={handleEventPress}
               onFilterPress={handleFilterPress}
               visibleAlerts={visibleAlerts}
             />
           ) : (
             <CalendarTab
+              alerts={alerts}
               calendarDays={calendarDays}
               calendarMonth={calendarMonth}
               calendarYear={calendarYear}
+              error={error}
+              isLoading={isLoading}
               onEventPress={handleEventPress}
               onNextMonth={handleNextMonth}
               onPreviousMonth={handlePreviousMonth}
+              onRefresh={loadAlerts}
               onSelectDate={handleSelectDate}
               selectedDate={selectedDate}
               selectedDateEvents={selectedDateEvents}
@@ -357,19 +385,35 @@ function SegmentedButton({
 
 function ListTab({
   actionCount,
+  error,
   filter,
+  isLoading,
   onEventPress,
   onFilterPress,
+  onRefresh,
   visibleAlerts,
 }: {
   actionCount: number;
+  error: string;
   filter: AlertFilter;
-  onEventPress: (alert: DeadlineAlert) => void;
+  isLoading: boolean;
+  onEventPress: (alert: DeadlineAlert) => void | Promise<void>;
   onFilterPress: () => void;
+  onRefresh: () => void;
   visibleAlerts: DeadlineAlert[];
 }) {
   return (
-    <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={styles.listContent}
+      refreshControl={
+        <RefreshControl
+          colors={[colors.primary]}
+          onRefresh={onRefresh}
+          refreshing={isLoading}
+          tintColor={colors.primary}
+        />
+      }
+      showsVerticalScrollIndicator={false}>
       <View style={styles.listHeader}>
         <View>
           <Text style={styles.sectionTitle}>Lista de Eventos</Text>
@@ -397,6 +441,16 @@ function ListTab({
 
       <View style={styles.divider} />
 
+      {isLoading && visibleAlerts.length === 0 ? (
+        <ActivityIndicator color={colors.primary} style={styles.feedback} />
+      ) : null}
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      {!isLoading && !error && visibleAlerts.length === 0 ? (
+        <Text style={styles.emptyText}>Nenhum alerta encontrado para este período.</Text>
+      ) : null}
+
       <View style={styles.alertList}>
         {visibleAlerts.map((alert, index) => (
           <AlertListItem
@@ -418,7 +472,7 @@ function AlertListItem({
 }: {
   alert: DeadlineAlert;
   index: number;
-  onPress: () => void;
+  onPress: () => void | Promise<void>;
 }) {
   const style = alertKindStyles[alert.kind];
   const itemProgress = useRef(new Animated.Value(0)).current;
@@ -468,28 +522,46 @@ function AlertListItem({
 }
 
 function CalendarTab({
+  alerts,
   calendarDays,
   calendarMonth,
   calendarYear,
+  error,
+  isLoading,
   onEventPress,
   onNextMonth,
   onPreviousMonth,
+  onRefresh,
   onSelectDate,
   selectedDate,
   selectedDateEvents,
 }: {
+  alerts: DeadlineAlert[];
   calendarDays: CalendarDay[];
   calendarMonth: number;
   calendarYear: number;
-  onEventPress: (alert: DeadlineAlert) => void;
+  error: string;
+  isLoading: boolean;
+  onEventPress: (alert: DeadlineAlert) => void | Promise<void>;
   onNextMonth: () => void;
   onPreviousMonth: () => void;
+  onRefresh: () => void;
   onSelectDate: (date: string) => void;
   selectedDate: string;
   selectedDateEvents: DeadlineAlert[];
 }) {
   return (
-    <ScrollView contentContainerStyle={styles.calendarContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={styles.calendarContent}
+      refreshControl={
+        <RefreshControl
+          colors={[colors.primary]}
+          onRefresh={onRefresh}
+          refreshing={isLoading}
+          tintColor={colors.primary}
+        />
+      }
+      showsVerticalScrollIndicator={false}>
       <View style={styles.calendarCard}>
         <View style={styles.calendarToolbar}>
           <AnimatedPressable
@@ -565,6 +637,12 @@ function CalendarTab({
         </View>
       </View>
 
+      {isLoading && selectedDateEvents.length === 0 ? (
+        <ActivityIndicator color={colors.primary} style={styles.feedback} />
+      ) : null}
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
       <View style={styles.dayPanel}>
         <View style={styles.selectedDateBadge}>
           <Text style={styles.selectedDateDay}>{getSelectedDay(selectedDate)}</Text>
@@ -600,7 +678,7 @@ function CalendarEventPill({
 }: {
   alert: DeadlineAlert;
   index: number;
-  onPress: () => void;
+  onPress: () => void | Promise<void>;
 }) {
   const style = alertKindStyles[alert.kind];
   const label = detailLabels[alert.kind] || alert.title;
@@ -688,6 +766,13 @@ function getWeekday(dateKey: string): string {
   const weekdayIndex = new Date(`${dateKey}T00:00:00`).getDay();
 
   return weekdayLabels[weekdayIndex].toUpperCase().replace('.', '');
+}
+
+function getMonthRange(year: number, month: number): { from: string; to: string } {
+  return {
+    from: toDateKey(new Date(year, month, 1)),
+    to: toDateKey(new Date(year, month + 1, 0)),
+  };
 }
 
 function toDateKey(date: Date): string {
@@ -828,6 +913,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
     height: StyleSheet.hairlineWidth,
   },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.lg,
+    textAlign: 'center',
+  },
   emptyDay: {
     alignItems: 'center',
     backgroundColor: colors.white,
@@ -850,6 +941,15 @@ const styles = StyleSheet.create({
   },
   filterButtonActive: {
     backgroundColor: colors.surfaceMuted,
+  },
+  errorText: {
+    ...typography.body,
+    color: colors.error,
+    marginTop: spacing.lg,
+    textAlign: 'center',
+  },
+  feedback: {
+    marginTop: spacing.lg,
   },
   header: {
     backgroundColor: colors.primary,

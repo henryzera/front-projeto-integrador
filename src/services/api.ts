@@ -6,6 +6,8 @@ type ApiRequestOptions = {
   token?: string | null;
 };
 
+const requestTimeoutMs = 20000;
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -33,11 +35,27 @@ export async function apiRequest<TResponse>(
     headers.Authorization = `Bearer ${options.token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    headers,
-    method: options.method || 'GET',
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      headers,
+      method: options.method || 'GET',
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new ApiError('Tempo esgotado ao comunicar com a API.', 408);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
   const isJson = response.headers.get('content-type')?.includes('application/json');
   const data = isJson && response.status !== 204 ? await response.json() : null;
 

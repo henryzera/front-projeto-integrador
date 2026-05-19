@@ -1,27 +1,30 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '../components/AnimatedPressable';
+import {
+  getDocumentsSummary,
+  listDocuments,
+  type DocumentGroup,
+  type DocumentsSummary,
+  type DocumentStatus,
+  type UserDocument,
+} from '../services';
+import { useAuth } from '../store';
 import { colors, spacing, typography } from '../theme';
 import { configureNextLayoutAnimation } from '../utils/motion';
-
-type DocumentStatus = 'attention' | 'expired' | 'ok' | 'pending';
-
-type BusinessDocument = {
-  id: string;
-  name: string;
-  status: DocumentStatus;
-  updatedAt: string;
-};
-
-type DocumentGroup = {
-  id: string;
-  title: string;
-  summary: string;
-  documents: BusinessDocument[];
-};
 
 type StatusStyle = {
   backgroundColor: string;
@@ -30,85 +33,12 @@ type StatusStyle = {
   label: string;
 };
 
-const documentHealth = 80;
-
-const documentGroups: DocumentGroup[] = [
-  {
-    id: 'habilitacoes-juridicas',
-    title: 'Habilitações Jurídicas',
-    summary: '3 de 4 em dia',
-    documents: [
-      {
-        id: 'contrato-social',
-        name: 'Contrato social consolidado',
-        status: 'ok',
-        updatedAt: 'Atualizado em 03/05/2026',
-      },
-      {
-        id: 'cartao-cnpj',
-        name: 'Cartão CNPJ',
-        status: 'ok',
-        updatedAt: 'Sem vencimento',
-      },
-      {
-        id: 'certidao-falimentar',
-        name: 'Certidão falimentar',
-        status: 'attention',
-        updatedAt: 'Vence em 12 dias',
-      },
-    ],
-  },
-  {
-    id: 'regularidades-fiscais',
-    title: 'Regularidades Fiscais',
-    summary: '4 de 5 em dia',
-    documents: [
-      {
-        id: 'certidao-federal',
-        name: 'Certidão negativa federal',
-        status: 'ok',
-        updatedAt: 'Vence em 28/06/2026',
-      },
-      {
-        id: 'fgts',
-        name: 'Regularidade do FGTS',
-        status: 'pending',
-        updatedAt: 'Aguardando envio',
-      },
-      {
-        id: 'estadual',
-        name: 'Certidão estadual',
-        status: 'ok',
-        updatedAt: 'Vence em 19/07/2026',
-      },
-    ],
-  },
-  {
-    id: 'qualificacoes-tecnicas',
-    title: 'Qualificações Técnicas',
-    summary: '2 de 3 em dia',
-    documents: [
-      {
-        id: 'atestado-capacidade',
-        name: 'Atestado de capacidade técnica',
-        status: 'ok',
-        updatedAt: 'Atualizado em 15/04/2026',
-      },
-      {
-        id: 'portfolio',
-        name: 'Portfólio de serviços',
-        status: 'ok',
-        updatedAt: 'Atualizado em 26/04/2026',
-      },
-      {
-        id: 'alvara',
-        name: 'Alvará técnico',
-        status: 'expired',
-        updatedAt: 'Venceu em 02/05/2026',
-      },
-    ],
-  },
-];
+const emptySummary: DocumentsSummary = {
+  categoriesCount: 0,
+  expiredCount: 0,
+  healthPercent: 0,
+  pendingCount: 0,
+};
 
 const statusStyles: Record<DocumentStatus, StatusStyle> = {
   attention: {
@@ -138,21 +68,37 @@ const statusStyles: Record<DocumentStatus, StatusStyle> = {
 };
 
 export function DocumentsScreen() {
-  const [expandedGroupId, setExpandedGroupId] = useState<string | undefined>(
-    documentGroups[0]?.id,
-  );
+  const { token } = useAuth();
+  const [documentGroups, setDocumentGroups] = useState<DocumentGroup[]>([]);
+  const [error, setError] = useState('');
+  const [expandedGroupId, setExpandedGroupId] = useState<string | undefined>();
+  const [isLoading, setIsLoading] = useState(false);
+  const [summary, setSummary] = useState<DocumentsSummary>(emptySummary);
   const healthProgress = useRef(new Animated.Value(0)).current;
   const screenProgress = useRef(new Animated.Value(0)).current;
 
-  const pendingCount = useMemo(
-    () =>
-      documentGroups.reduce(
-        (total, group) =>
-          total + group.documents.filter((document) => document.status !== 'ok').length,
-        0,
-      ),
-    [],
-  );
+  const loadDocuments = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    try {
+      setError('');
+      setIsLoading(true);
+      const [nextSummary, documentsResponse] = await Promise.all([
+        getDocumentsSummary(token),
+        listDocuments(token),
+      ]);
+
+      setSummary(nextSummary);
+      setDocumentGroups(documentsResponse.groups);
+      setExpandedGroupId((currentGroupId) => currentGroupId || documentsResponse.groups[0]?.id);
+    } catch {
+      setError('Nao foi possivel carregar seus documentos agora.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token]);
 
   const handleToggleGroup = (groupId: string): void => {
     configureNextLayoutAnimation();
@@ -178,11 +124,15 @@ export function DocumentsScreen() {
         delay: 120,
         duration: 700,
         easing: Easing.out(Easing.cubic),
-        toValue: documentHealth,
+        toValue: summary.healthPercent,
         useNativeDriver: false,
       }),
     ]).start();
-  }, [healthProgress, screenProgress]);
+  }, [healthProgress, screenProgress, summary.healthPercent]);
+
+  useEffect(() => {
+    void loadDocuments();
+  }, [loadDocuments]);
 
   const screenMotionStyle = {
     opacity: screenProgress,
@@ -208,13 +158,23 @@ export function DocumentsScreen() {
       </View>
 
       <Animated.View style={[styles.body, screenMotionStyle]}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              colors={[colors.primary]}
+              onRefresh={loadDocuments}
+              refreshing={isLoading}
+              tintColor={colors.primary}
+            />
+          }
+          showsVerticalScrollIndicator={false}>
           <View style={styles.statusRow}>
             <View style={styles.healthCard}>
               <View style={styles.progressTrack}>
                 <Animated.View style={[styles.progressFill, { width: healthProgressWidth }]} />
               </View>
-              <Text style={styles.healthText}>{documentHealth}% dos documentos estão em dia</Text>
+              <Text style={styles.healthText}>{summary.healthPercent}% dos documentos estão em dia</Text>
             </View>
 
             <AnimatedPressable
@@ -228,17 +188,27 @@ export function DocumentsScreen() {
 
           <View style={styles.insightRow}>
             <View style={styles.insightItem}>
-              <Text style={styles.insightValue}>{documentGroups.length}</Text>
+              <Text style={styles.insightValue}>{summary.categoriesCount}</Text>
               <Text style={styles.insightLabel}>categorias</Text>
             </View>
             <View style={styles.insightDivider} />
             <View style={styles.insightItem}>
-              <Text style={styles.insightValue}>{pendingCount}</Text>
+              <Text style={styles.insightValue}>{summary.pendingCount}</Text>
               <Text style={styles.insightLabel}>pedem ação</Text>
             </View>
           </View>
 
           <View style={styles.divider} />
+
+          {isLoading && documentGroups.length === 0 ? (
+            <ActivityIndicator color={colors.primary} style={styles.feedback} />
+          ) : null}
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          {!isLoading && !error && documentGroups.length === 0 ? (
+            <Text style={styles.emptyText}>Nenhum documento cadastrado ainda.</Text>
+          ) : null}
 
           <View style={styles.groups}>
             {documentGroups.map((group) => {
@@ -282,7 +252,7 @@ export function DocumentsScreen() {
   );
 }
 
-function DocumentRow({ document, index }: { document: BusinessDocument; index: number }) {
+function DocumentRow({ document, index }: { document: UserDocument; index: number }) {
   const status = statusStyles[document.status];
   const itemProgress = useRef(new Animated.Value(0)).current;
 
@@ -322,7 +292,7 @@ function DocumentRow({ document, index }: { document: BusinessDocument; index: n
           {document.name}
         </Text>
         <Text numberOfLines={1} style={styles.documentDate}>
-          {document.updatedAt}
+          {getDocumentSubtitle(document)}
         </Text>
       </View>
 
@@ -332,6 +302,38 @@ function DocumentRow({ document, index }: { document: BusinessDocument; index: n
       </View>
     </Animated.View>
   );
+}
+
+function getDocumentSubtitle(document: UserDocument): string {
+  if (document.status === 'pending') {
+    return 'Aguardando envio';
+  }
+
+  if (document.expiresAt) {
+    const expiresAt = formatDate(document.expiresAt);
+
+    if (document.status === 'expired') {
+      return `Venceu em ${expiresAt}`;
+    }
+
+    return `Vence em ${expiresAt}`;
+  }
+
+  if (document.updatedAt) {
+    return `Atualizado em ${formatDate(document.updatedAt)}`;
+  }
+
+  return 'Sem vencimento informado';
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'data indisponível';
+  }
+
+  return Intl.DateTimeFormat('pt-BR').format(date);
 }
 
 const styles = StyleSheet.create({
@@ -353,6 +355,21 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     marginBottom: spacing.md,
     marginTop: spacing.md,
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  errorText: {
+    ...typography.body,
+    color: colors.error,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  feedback: {
+    marginBottom: spacing.md,
   },
   documentDate: {
     ...typography.caption,

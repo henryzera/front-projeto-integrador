@@ -44,7 +44,12 @@ export function HomeScreen() {
     try {
       setError('');
       setIsLoading(true);
-      const response = await listContratacoes(token, opportunitiesLimit);
+      const response = await listContratacoes(token, {
+        limit: opportunitiesLimit,
+        meOnly: activeFilter === 'mei' ? true : undefined,
+        municipio: activeFilter === 'location' ? 'Recife' : undefined,
+        uf: activeFilter === 'location' ? 'PE' : undefined,
+      });
       setContratacoes(response.data);
       setTotal(response.total || response.data.length);
     } catch {
@@ -52,7 +57,7 @@ export function HomeScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, [activeFilter, token]);
 
   useEffect(() => {
     void loadContratacoes();
@@ -125,7 +130,7 @@ export function HomeScreen() {
             <View style={styles.column}>
               {columns.left.map(({ item, originalIndex, variant }) => (
                 <OpportunityCard
-                  compatibility={getCompatibilityScore(originalIndex)}
+                  compatibility={getCompatibilityScore(originalIndex, item)}
                   item={item}
                   key={item._id}
                   variant={variant}
@@ -136,7 +141,7 @@ export function HomeScreen() {
             <View style={[styles.column, styles.rightColumn]}>
               {columns.right.map(({ item, originalIndex, variant }) => (
                 <OpportunityCard
-                  compatibility={getCompatibilityScore(originalIndex)}
+                  compatibility={getCompatibilityScore(originalIndex, item)}
                   item={item}
                   key={item._id}
                   variant={variant}
@@ -174,8 +179,8 @@ function splitIntoColumns(items: Contratacao[]): OpportunityColumns {
   );
 }
 
-function getCompatibilityScore(index: number): number {
-  return compatibilityScores[index % compatibilityScores.length];
+function getCompatibilityScore(index: number, item?: Contratacao): number {
+  return item?.compatibilityScore || compatibilityScores[index % compatibilityScores.length];
 }
 
 const styles = StyleSheet.create({

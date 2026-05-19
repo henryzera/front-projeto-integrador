@@ -8,7 +8,16 @@ export type AuthUser = {
   email: string;
   firstName: string;
   lastName: string;
+  notificationPreferences?: NotificationPreferences;
   updatedAt: string;
+};
+
+export type NotificationPreferences = {
+  daysBeforeDeadline: number;
+  documentAlerts: boolean;
+  email: boolean;
+  proposalAlerts: boolean;
+  push: boolean;
 };
 
 export type LoginPayload = {
@@ -24,6 +33,12 @@ export type RegisterPayload = {
   firstName: string;
   lastName: string;
   password: string;
+};
+
+export type UpdateMePayload = Partial<
+  Pick<AuthUser, 'cnae' | 'cnpj' | 'email' | 'firstName' | 'lastName'>
+> & {
+  notificationPreferences?: Partial<NotificationPreferences>;
 };
 
 export type AuthResponse = {
@@ -54,4 +69,12 @@ export function logout(token: string): Promise<void> {
 
 export function getMe(token: string): Promise<{ user: AuthUser }> {
   return apiRequest<{ user: AuthUser }>('/me', { token });
+}
+
+export function updateMe(token: string, payload: UpdateMePayload): Promise<{ user: AuthUser }> {
+  return apiRequest<{ user: AuthUser }>('/me', {
+    body: payload,
+    method: 'PATCH',
+    token,
+  });
 }

@@ -20,29 +20,6 @@ type ProfileAction = {
   value: string;
 };
 
-const profileActions: ProfileAction[] = [
-  {
-    icon: 'business-outline',
-    label: 'Dados da empresa',
-    value: 'Cadastro e CNAE',
-  },
-  {
-    icon: 'notifications-outline',
-    label: 'Preferências de alerta',
-    value: '5 ativos',
-  },
-  {
-    icon: 'shield-checkmark-outline',
-    label: 'Segurança',
-    value: 'Sessão protegida',
-  },
-  {
-    icon: 'help-circle-outline',
-    label: 'Ajuda e suporte',
-    value: 'Central de atendimento',
-  },
-];
-
 export function ProfileScreen() {
   const { signOut, user } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -56,6 +33,32 @@ export function ProfileScreen() {
   const avatarUrl = `https://api.dicebear.com/9.x/initials/png?backgroundColor=27AE9E&fontWeight=700&seed=${encodeURIComponent(
     fullName,
   )}`;
+  const notificationSummary = getNotificationSummary(user?.notificationPreferences);
+  const profileActions = useMemo<ProfileAction[]>(
+    () => [
+      {
+        icon: 'business-outline',
+        label: 'Dados da empresa',
+        value: user?.cnae ? `CNAE ${user.cnae}` : 'Cadastro e CNAE',
+      },
+      {
+        icon: 'notifications-outline',
+        label: 'Preferências de alerta',
+        value: notificationSummary,
+      },
+      {
+        icon: 'shield-checkmark-outline',
+        label: 'Segurança',
+        value: 'Sessão protegida',
+      },
+      {
+        icon: 'help-circle-outline',
+        label: 'Ajuda e suporte',
+        value: 'Central de atendimento',
+      },
+    ],
+    [notificationSummary, user?.cnae],
+  );
 
   const handleSignOutPress = async (): Promise<void> => {
     setIsSigningOut(true);
@@ -201,6 +204,25 @@ function formatCnpj(cnpj?: string): string {
     8,
     12,
   )}-${digits.slice(12)}`;
+}
+
+function getNotificationSummary(
+  preferences?: {
+    daysBeforeDeadline: number;
+    documentAlerts: boolean;
+    email: boolean;
+    proposalAlerts: boolean;
+    push: boolean;
+  },
+): string {
+  if (!preferences) {
+    return 'Preferências padrão';
+  }
+
+  const activeChannels = [preferences.email, preferences.push].filter(Boolean).length;
+  const activeRules = [preferences.documentAlerts, preferences.proposalAlerts].filter(Boolean).length;
+
+  return `${activeRules} regras, ${activeChannels} canais`;
 }
 
 const styles = StyleSheet.create({
