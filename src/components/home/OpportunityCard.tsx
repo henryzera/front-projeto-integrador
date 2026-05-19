@@ -59,6 +59,10 @@ function getIssuer(item: Contratacao): string {
     return `${item.unidadeOrgao.municipioNome} ${item.unidadeOrgao.ufSigla || ''}`.trim();
   }
 
+  if (item.municipioNome) {
+    return `${item.municipioNome} ${item.uf || ''}`.trim();
+  }
+
   return 'Órgão emissor';
 }
 
@@ -75,7 +79,7 @@ function formatCurrency(value?: number): string {
 
 function formatDeadline(value?: string): string {
   if (!value) {
-    return 'Data limite não informada';
+    return 'Prazo a confirmar';
   }
 
   const deadline = new Date(value);

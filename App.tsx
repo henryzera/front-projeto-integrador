@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import AppNavigator from './src/navigation';
-import { AuthProvider } from './src/store';
+import { AuthProvider, StreamingProvider } from './src/store';
 import { colors } from './src/theme';
 
 const navigationTheme: Theme = {
@@ -23,10 +23,12 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer theme={navigationTheme}>
-          <StatusBar backgroundColor={colors.background} style="dark" />
-          <AppNavigator />
-        </NavigationContainer>
+        <StreamingProvider>
+          <NavigationContainer theme={navigationTheme}>
+            <StatusBar backgroundColor={colors.background} style="dark" />
+            <AppNavigator />
+          </NavigationContainer>
+        </StreamingProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

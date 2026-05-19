@@ -3,16 +3,21 @@ import { apiRequest } from './api';
 export type Contratacao = {
   _id: string;
   anoCompra?: number;
+  codigoIbge?: string;
   compatibilityScore?: number;
+  dataAtualizacao?: string;
   dataEncerramentoProposta?: string;
   modalidadeNome?: string;
+  municipioNome?: string;
   numeroCompra?: string;
   orgaoEntidade?: {
     razaoSocial?: string;
   };
   objetoCompra?: string;
   situacaoCompraNome?: string;
+  uf?: string;
   unidadeOrgao?: {
+    codigoIbge?: string;
     nomeUnidade?: string;
     municipioNome?: string;
     ufSigla?: string;

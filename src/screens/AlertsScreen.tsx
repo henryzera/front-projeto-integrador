@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '../components/AnimatedPressable';
+import { StreamingNotice } from '../components/StreamingNotice';
+import type { StreamingLicitacao } from '../hooks';
 import {
   listAlerts,
   markAlertAsRead,
@@ -21,7 +23,7 @@ import {
   type AlertKind,
   type DeadlineAlert,
 } from '../services';
-import { useAuth } from '../store';
+import { useAuth, useLicitacoesStream } from '../store';
 import { colors, spacing, typography } from '../theme';
 import { configureNextLayoutAnimation } from '../utils/motion';
 
@@ -93,15 +95,18 @@ const detailLabels: Partial<Record<AlertKind, string>> = {
 
 export function AlertsScreen() {
   const { token } = useAuth();
+  const { eventSequence, isConnected, novaLicitacao } = useLicitacoesStream();
   const today = useMemo(() => new Date(), []);
   const [activeTab, setActiveTab] = useState<AlertTab>('list');
   const [alerts, setAlerts] = useState<DeadlineAlert[]>([]);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<AlertFilter>('all');
   const [isLoading, setIsLoading] = useState(false);
+  const [streamNotice, setStreamNotice] = useState<{ description: string; title: string } | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(today.getMonth());
   const [calendarYear, setCalendarYear] = useState(today.getFullYear());
   const [selectedDate, setSelectedDate] = useState(toDateKey(today));
+  const processedStreamSequence = useRef(0);
   const screenProgress = useRef(new Animated.Value(0)).current;
   const tabProgress = useRef(new Animated.Value(1)).current;
 
@@ -214,6 +219,16 @@ export function AlertsScreen() {
   };
 
   const handleResolveAlert = async (alertId: string): Promise<void> => {
+    if (isLocalStreamingAlert(alertId)) {
+      configureNextLayoutAnimation();
+      setAlerts((currentAlerts) =>
+        currentAlerts.map((alert) =>
+          alert.id === alertId ? { ...alert, status: 'resolved' } : alert,
+        ),
+      );
+      return;
+    }
+
     if (!token) {
       return;
     }
@@ -229,7 +244,13 @@ export function AlertsScreen() {
   };
 
   const handleEventPress = async (alert: DeadlineAlert): Promise<void> => {
-    if (token && alert.status === 'open') {
+    if (isLocalStreamingAlert(alert.id) && alert.status === 'open') {
+      setAlerts((currentAlerts) =>
+        currentAlerts.map((currentAlert) =>
+          currentAlert.id === alert.id ? { ...currentAlert, status: 'read' } : currentAlert,
+        ),
+      );
+    } else if (token && alert.status === 'open') {
       try {
         const response = await markAlertAsRead(token, alert.id);
         setAlerts((currentAlerts) =>
@@ -279,6 +300,39 @@ export function AlertsScreen() {
     void loadAlerts();
   }, [loadAlerts]);
 
+  useEffect(() => {
+    if (!novaLicitacao || eventSequence === 0 || processedStreamSequence.current === eventSequence) {
+      return;
+    }
+
+    processedStreamSequence.current = eventSequence;
+
+    const nextAlert = mapStreamingToAlert(novaLicitacao);
+
+    if (alerts.some((alert) => alert.id === nextAlert.id)) {
+      return;
+    }
+
+    configureNextLayoutAnimation();
+    setAlerts((currentAlerts) => [nextAlert, ...currentAlerts]);
+    setStreamNotice({
+      description: nextAlert.description,
+      title: nextAlert.title,
+    });
+  }, [alerts, eventSequence, novaLicitacao]);
+
+  useEffect(() => {
+    if (!streamNotice) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setStreamNotice(null);
+    }, 4500);
+
+    return () => clearTimeout(timeoutId);
+  }, [streamNotice]);
+
   const screenMotionStyle = {
     opacity: screenProgress,
     transform: [
@@ -322,6 +376,18 @@ export function AlertsScreen() {
             onPress={() => handleTabChange('calendar')}
           />
         </View>
+
+        <View style={styles.liveStatus}>
+          <View style={[styles.liveDot, isConnected ? styles.liveDotOn : styles.liveDotOff]} />
+          <Text style={styles.liveStatusText}>
+            {isConnected ? 'Alertas em tempo real ativos' : 'Reconectando alertas em tempo real'}
+          </Text>
+        </View>
+        {streamNotice ? (
+          <View style={styles.streamNoticeWrapper}>
+            <StreamingNotice description={streamNotice.description} title={streamNotice.title} />
+          </View>
+        ) : null}
 
         <Animated.View style={[styles.tabContent, tabMotionStyle]}>
           {activeTab === 'list' ? (
@@ -758,6 +824,45 @@ function getDayMarkerStyle(dayEvents: DeadlineAlert[]): AlertKindStyle | undefin
   }, undefined);
 }
 
+function mapStreamingToAlert(licitacao: StreamingLicitacao): DeadlineAlert {
+  const location = [licitacao.municipioNome, licitacao.uf].filter(Boolean).join('/');
+  const description = licitacao.objetoCompra || 'Novo edital publicado pelo PNCP';
+
+  return {
+    date: getStreamingDateKey(licitacao.dataAtualizacao),
+    description: location ? `${description} - ${location}` : description,
+    id: getStreamingAlertId(licitacao._id),
+    kind: 'info',
+    priority: 3,
+    relatedId: licitacao._id,
+    relatedType: 'contratacao',
+    status: 'open',
+    title: 'Nova oportunidade MEI/EPP',
+  };
+}
+
+function getStreamingAlertId(id: string): string {
+  return `stream-${id}`;
+}
+
+function isLocalStreamingAlert(id: string): boolean {
+  return id.startsWith('stream-');
+}
+
+function getStreamingDateKey(value: string | null): string {
+  if (!value) {
+    return toDateKey(new Date());
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return toDateKey(new Date());
+  }
+
+  return toDateKey(date);
+}
+
 function getSelectedDay(dateKey: string): string {
   return String(new Date(`${dateKey}T00:00:00`).getDate());
 }
@@ -962,6 +1067,33 @@ const styles = StyleSheet.create({
     ...typography.title,
     color: colors.text,
   },
+  liveDot: {
+    borderRadius: 999,
+    height: 8,
+    width: 8,
+  },
+  liveDotOff: {
+    backgroundColor: colors.warning,
+  },
+  liveDotOn: {
+    backgroundColor: colors.primaryDark,
+  },
+  liveStatus: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    flexDirection: 'row',
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    columnGap: spacing.sm,
+  },
+  liveStatusText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
   listContent: {
     paddingBottom: spacing.xxl,
     paddingTop: spacing.lg,
@@ -1066,6 +1198,9 @@ const styles = StyleSheet.create({
   selectedDateWeekday: {
     ...typography.button,
     color: colors.text,
+  },
+  streamNoticeWrapper: {
+    marginTop: spacing.md,
   },
   tabContent: {
     flex: 1,
