@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -69,6 +70,12 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
       <KeyboardAvoidingView behavior={keyboardAvoidingBehavior} style={styles.keyboardView}>
         <View style={styles.content}>
           <View style={styles.header}>
+            {/* Logo do aplicativo */}
+            <Image
+              source={require('../assets/images/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>Projeto Integrador</Text>
             <Text style={styles.subtitle}>Seja bem-vindo(a)!</Text>
           </View>
@@ -127,6 +134,12 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: spacing.xl,
+  },
+  logo: {
+    width: 68,
+    height: 68,
+    alignSelf: 'center',
+    marginBottom: spacing.md,
   },
   keyboardView: {
     flex: 1,
