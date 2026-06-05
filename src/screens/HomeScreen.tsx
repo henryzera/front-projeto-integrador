@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -6,17 +7,20 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StreamingNotice } from '../components/StreamingNotice';
 import {
-  HomeFilterTabs,
+  HomeFilterPanel,
   HomeSearchBar,
   OpportunityCard,
-  type HomeFilter,
+  countActiveFilters,
+  defaultHomeFilters,
+  resolveValueRange,
+  type HomeFilters,
   type OpportunityCardVariant,
 } from '../components/home';
 import type { StreamingLicitacao } from '../hooks';
@@ -28,7 +32,6 @@ import { configureNextLayoutAnimation } from '../utils/motion';
 
 type OpportunityColumnItem = {
   item: Contratacao;
-  originalIndex: number;
   variant: OpportunityCardVariant;
 };
 
@@ -38,40 +41,46 @@ type OpportunityColumns = {
 };
 
 const opportunitiesLimit = 12;
-const compatibilityScores = [80, 76, 92, 84, 88, 72];
 
 export function HomeScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { eventSequence, isConnected, novaLicitacao } = useLicitacoesStream();
-  const [activeFilter, setActiveFilter] = useState<HomeFilter>('mei');
   const [contratacoes, setContratacoes] = useState<Contratacao[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [municipioFilter, setMunicipioFilter] = useState('Recife');
   const [query, setQuery] = useState('');
+  // Filtros iniciam vazios (sem valores chumbados); o usuario refina pelo painel.
+  const [filters, setFilters] = useState<HomeFilters>(defaultHomeFilters);
+  const [isFilterPanelVisible, setIsFilterPanelVisible] = useState(false);
   const [streamNotice, setStreamNotice] = useState<{ description: string; title: string } | null>(null);
-  const [statusFilter, setStatusFilter] = useState('');
   const [total, setTotal] = useState(0);
-  const [ufFilter, setUfFilter] = useState('PE');
   const processedStreamSequence = useRef(0);
+
+  const hasCnae = Boolean(user?.cnae);
+  const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
 
   const loadContratacoes = useCallback(async () => {
     if (!token) {
       return;
     }
 
+    const { valorMax, valorMin } = resolveValueRange(filters.valorRange);
+
     try {
       setError('');
       setIsLoading(true);
       const response = await listContratacoes(token, {
+        cnae: filters.compatibleCnae ? user?.cnae : undefined,
         limit: opportunitiesLimit,
-        meOnly: activeFilter === 'mei' ? true : undefined,
-        municipio: activeFilter === 'location' ? municipioFilter.trim() : undefined,
+        meOnly: filters.meOnly ? true : undefined,
+        modalidadeNome: filters.modalidadeNome || undefined,
+        municipio: filters.municipio.trim() || undefined,
         q: query.trim() || undefined,
         skip: 0,
-        status: statusFilter.trim() || undefined,
-        uf: activeFilter === 'location' ? ufFilter.trim().toLocaleUpperCase('pt-BR') : undefined,
+        uf: filters.uf.trim() ? filters.uf.trim().toLocaleUpperCase('pt-BR') : undefined,
+        valorMax,
+        valorMin,
       });
       setContratacoes(response.data);
       setTotal(response.total || response.data.length);
@@ -80,7 +89,7 @@ export function HomeScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeFilter, municipioFilter, query, statusFilter, token, ufFilter]);
+  }, [filters, query, token, user?.cnae]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -129,6 +138,10 @@ export function HomeScreen() {
     setQuery('');
   };
 
+  const handleClearFilters = (): void => {
+    setFilters(defaultHomeFilters);
+  };
+
   const visibleCount = total || contratacoes.length;
 
   return (
@@ -139,33 +152,29 @@ export function HomeScreen() {
 
       <View style={styles.body}>
         <HomeSearchBar query={query} onChangeQuery={setQuery} onClear={handleClearSearch} />
-        <HomeFilterTabs activeFilter={activeFilter} onChangeFilter={setActiveFilter} />
-        <View style={styles.filterRow}>
-          <TextInput
-            autoCapitalize="words"
-            onChangeText={setMunicipioFilter}
-            placeholder="Cidade"
-            placeholderTextColor={colors.textSecondary}
-            style={styles.filterInput}
-            value={municipioFilter}
-          />
-          <TextInput
-            autoCapitalize="characters"
-            maxLength={2}
-            onChangeText={(value) => setUfFilter(value.toLocaleUpperCase('pt-BR'))}
-            placeholder="UF"
-            placeholderTextColor={colors.textSecondary}
-            style={[styles.filterInput, styles.ufInput]}
-            value={ufFilter}
-          />
-          <TextInput
-            autoCapitalize="words"
-            onChangeText={setStatusFilter}
-            placeholder="Status"
-            placeholderTextColor={colors.textSecondary}
-            style={styles.filterInput}
-            value={statusFilter}
-          />
+        <View style={styles.filterBar}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            activeOpacity={0.8}
+            onPress={() => setIsFilterPanelVisible(true)}
+            style={styles.filterButton}>
+            <Ionicons color={colors.primaryDark} name="options-outline" size={18} />
+            <Text style={styles.filterButtonText}>Filtros</Text>
+            {activeFilterCount > 0 ? (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+          {activeFilterCount > 0 ? (
+            <TouchableOpacity
+              accessibilityRole="button"
+              activeOpacity={0.7}
+              onPress={handleClearFilters}
+              style={styles.clearFiltersButton}>
+              <Text style={styles.clearFiltersText}>Limpar filtros</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
         <View style={styles.liveStatus}>
           <View style={[styles.liveDot, isConnected ? styles.liveDotOn : styles.liveDotOff]} />
@@ -200,9 +209,9 @@ export function HomeScreen() {
 
           <View style={styles.grid}>
             <View style={styles.column}>
-              {columns.left.map(({ item, originalIndex, variant }) => (
+              {columns.left.map(({ item, variant }) => (
                 <OpportunityCard
-                  compatibility={getCompatibilityScore(originalIndex, item)}
+                  compatibility={item.compatibilityScore}
                   item={item}
                   key={item._id}
                   onPress={() => navigation.navigate('OpportunityDetail', { id: item._id })}
@@ -212,9 +221,9 @@ export function HomeScreen() {
             </View>
 
             <View style={[styles.column, styles.rightColumn]}>
-              {columns.right.map(({ item, originalIndex, variant }) => (
+              {columns.right.map(({ item, variant }) => (
                 <OpportunityCard
-                  compatibility={getCompatibilityScore(originalIndex, item)}
+                  compatibility={item.compatibilityScore}
                   item={item}
                   key={item._id}
                   onPress={() => navigation.navigate('OpportunityDetail', { id: item._id })}
@@ -225,6 +234,15 @@ export function HomeScreen() {
           </View>
         </ScrollView>
       </View>
+
+      <HomeFilterPanel
+        filters={filters}
+        hasCnae={hasCnae}
+        onChange={setFilters}
+        onClear={handleClearFilters}
+        onClose={() => setIsFilterPanelVisible(false)}
+        visible={isFilterPanelVisible}
+      />
     </SafeAreaView>
   );
 }
@@ -234,7 +252,6 @@ function splitIntoColumns(items: Contratacao[]): OpportunityColumns {
     (columns, item, index) => {
       const columnItem: OpportunityColumnItem = {
         item,
-        originalIndex: index,
         variant: index % 3 === 0 ? 'compact' : 'media',
       };
 
@@ -251,10 +268,6 @@ function splitIntoColumns(items: Contratacao[]): OpportunityColumns {
       right: [],
     },
   );
-}
-
-function getCompatibilityScore(index: number, item?: Contratacao): number {
-  return item?.compatibilityScore || compatibilityScores[index % compatibilityScores.length];
 }
 
 function mapStreamingToContratacao(licitacao: StreamingLicitacao): Contratacao {
@@ -318,20 +331,46 @@ const styles = StyleSheet.create({
   feedback: {
     marginTop: spacing.xl,
   },
-  filterInput: {
-    ...typography.caption,
-    backgroundColor: colors.surface,
-    borderColor: colors.surfaceMuted,
-    borderRadius: 14,
-    borderWidth: 1,
-    color: colors.text,
-    flex: 1,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
+  clearFiltersButton: {
+    paddingVertical: spacing.sm,
   },
-  filterRow: {
+  clearFiltersText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  filterBadge: {
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    justifyContent: 'center',
+    minWidth: 20,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  filterBadgeText: {
+    ...typography.tabLabel,
+    color: colors.white,
+    fontWeight: '700',
+  },
+  filterBar: {
+    alignItems: 'center',
+    columnGap: spacing.md,
     flexDirection: 'row',
+  },
+  filterButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
     columnGap: spacing.sm,
+    flexDirection: 'row',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  filterButtonText: {
+    ...typography.tabLabel,
+    color: colors.primaryDark,
+    fontWeight: '700',
   },
   grid: {
     flexDirection: 'row',
@@ -378,10 +417,6 @@ const styles = StyleSheet.create({
   },
   rightColumn: {
     marginLeft: spacing.md,
-  },
-  ufInput: {
-    flex: 0.46,
-    textAlign: 'center',
   },
 });
 

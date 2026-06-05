@@ -28,6 +28,10 @@ import { useAuth, useLicitacoesStream } from '../store';
 import { colors, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../types/navigation';
 import { configureNextLayoutAnimation } from '../utils/motion';
+import {
+  requestNotificationPermission,
+  scheduleAlertsDeadlineNotifications,
+} from '../utils/notifications';
 
 type AlertTab = 'calendar' | 'list';
 type AlertFilter = 'action' | 'all';
@@ -112,6 +116,7 @@ export function AlertsScreen() {
   const processedStreamSequence = useRef(0);
   const screenProgress = useRef(new Animated.Value(0)).current;
   const tabProgress = useRef(new Animated.Value(1)).current;
+  const notificationsRequested = useRef(false);
 
   const visibleAlerts = useMemo(() => {
     const sortedAlerts = [...alerts].sort((firstAlert, secondAlert) => {
@@ -313,6 +318,47 @@ export function AlertsScreen() {
   useEffect(() => {
     void loadAlerts();
   }, [loadAlerts]);
+
+  useEffect(() => {
+    if (alerts.length === 0) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function scheduleDeadlineReminders() {
+      // Pede permissao apenas uma vez por sessao para nao incomodar o usuario.
+      if (!notificationsRequested.current) {
+        notificationsRequested.current = true;
+        const granted = await requestNotificationPermission();
+
+        if (!granted) {
+          return;
+        }
+      }
+
+      if (!isMounted) {
+        return;
+      }
+
+      // Agenda lembretes apenas para alertas que pedem acao (prazos criticos/proximos).
+      const actionableAlerts = alerts.filter(
+        (alert) => (alert.priority || alertKindStyles[alert.kind].priority) <= 2,
+      );
+
+      const scheduledIds = await scheduleAlertsDeadlineNotifications(actionableAlerts);
+
+      if (scheduledIds.length > 0) {
+        console.log(`[Alertas] ${scheduledIds.length} lembrete(s) de prazo agendado(s).`, scheduledIds);
+      }
+    }
+
+    void scheduleDeadlineReminders();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [alerts]);
 
   useEffect(() => {
     if (!novaLicitacao || eventSequence === 0 || processedStreamSequence.current === eventSequence) {

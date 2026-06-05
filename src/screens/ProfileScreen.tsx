@@ -27,6 +27,8 @@ import {
   type AuthUser,
   type NotificationPreferences,
   type ProfileDashboard,
+  type ProfileFunnel,
+  type ProfileHistoryEntry,
 } from '../services';
 import { useAuth } from '../store';
 import { colors, spacing, typography } from '../theme';
@@ -216,6 +218,12 @@ export function ProfileScreen() {
             <MetricTile label="vencidos" value={String(dashboard.expiredDocumentsCount)} />
           </View>
 
+          <FunnelSection
+            funnel={dashboard.funnel}
+            history={dashboard.history}
+            isLoading={isLoadingDashboard}
+          />
+
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Conta</Text>
             <View style={styles.actionList}>
@@ -309,6 +317,145 @@ export function ProfileScreen() {
       </Modal>
     </SafeAreaView>
   );
+}
+
+type FunnelStage = {
+  key: keyof ProfileFunnel;
+  label: string;
+  color: string;
+};
+
+const funnelStages: FunnelStage[] = [
+  { color: '#349DF5', key: 'preparing', label: 'Em preparação' },
+  { color: colors.warning, key: 'submitted', label: 'Enviadas' },
+  { color: colors.primary, key: 'won', label: 'Ganhos' },
+  { color: colors.error, key: 'lost', label: 'Perdidos' },
+];
+
+const monthShortLabels = [
+  'Jan',
+  'Fev',
+  'Mar',
+  'Abr',
+  'Mai',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Set',
+  'Out',
+  'Nov',
+  'Dez',
+];
+
+function FunnelSection({
+  funnel,
+  history,
+  isLoading,
+}: {
+  funnel?: ProfileFunnel;
+  history?: ProfileHistoryEntry[];
+  isLoading: boolean;
+}) {
+  const hasFunnel = Boolean(funnel);
+  const maxFunnelValue = funnel
+    ? Math.max(funnel.preparing, funnel.submitted, funnel.won, funnel.lost, 1)
+    : 1;
+  const maxHistoryValue = history?.length
+    ? Math.max(...history.map((entry) => entry.total), 1)
+    : 1;
+
+  return (
+    <View style={styles.funnelCard}>
+      <Text style={styles.sectionTitle}>Funil de participações</Text>
+      <Text style={styles.funnelCaption}>
+        Acompanhe a evolução das suas propostas por etapa.
+      </Text>
+
+      {!hasFunnel && isLoading ? (
+        <ActivityIndicator color={colors.primary} style={styles.funnelFeedback} />
+      ) : null}
+
+      {!hasFunnel && !isLoading ? (
+        <Text style={styles.funnelEmpty}>Ainda não há dados de participação para exibir.</Text>
+      ) : null}
+
+      {hasFunnel && funnel ? (
+        <View style={styles.funnelStages}>
+          {funnelStages.map((stage) => (
+            <FunnelBar
+              color={stage.color}
+              key={stage.key}
+              label={stage.label}
+              max={maxFunnelValue}
+              value={funnel[stage.key]}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      {history && history.length > 0 ? (
+        <View style={styles.historyBlock}>
+          <Text style={styles.historyTitle}>Histórico por mês</Text>
+          <View style={styles.historyList}>
+            {history.map((entry) => (
+              <HistoryRow entry={entry} key={entry.month} max={maxHistoryValue} />
+            ))}
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function FunnelBar({
+  color,
+  label,
+  max,
+  value,
+}: {
+  color: string;
+  label: string;
+  max: number;
+  value: number;
+}) {
+  const widthPercent = `${Math.max((value / max) * 100, value > 0 ? 8 : 4)}%` as const;
+
+  return (
+    <View style={styles.funnelRow}>
+      <Text numberOfLines={1} style={styles.funnelLabel}>
+        {label}
+      </Text>
+      <View style={styles.funnelTrack}>
+        <View style={[styles.funnelFill, { backgroundColor: color, width: widthPercent }]} />
+      </View>
+      <Text style={styles.funnelValue}>{value}</Text>
+    </View>
+  );
+}
+
+function HistoryRow({ entry, max }: { entry: ProfileHistoryEntry; max: number }) {
+  const widthPercent = `${Math.max((entry.total / max) * 100, entry.total > 0 ? 8 : 4)}%` as const;
+
+  return (
+    <View style={styles.historyRow}>
+      <Text style={styles.historyMonth}>{formatHistoryMonth(entry.month)}</Text>
+      <View style={styles.historyTrack}>
+        <View style={[styles.historyFill, { width: widthPercent }]} />
+      </View>
+      <Text style={styles.historyValue}>{entry.total}</Text>
+    </View>
+  );
+}
+
+function formatHistoryMonth(value: string): string {
+  const [year, month] = value.split('-');
+  const monthIndex = Number(month) - 1;
+
+  if (Number.isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+    return value;
+  }
+
+  return `${monthShortLabels[monthIndex]}/${year?.slice(2) || ''}`;
 }
 
 function InfoTile({ label, value }: { label: string; value: string }) {
@@ -563,6 +710,106 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+  },
+  funnelCaption: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  funnelCard: {
+    backgroundColor: colors.white,
+    borderColor: colors.surfaceMuted,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: spacing.md,
+    rowGap: spacing.sm,
+  },
+  funnelEmpty: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
+  funnelFeedback: {
+    marginTop: spacing.md,
+  },
+  funnelFill: {
+    borderRadius: 999,
+    height: '100%',
+  },
+  funnelLabel: {
+    ...typography.caption,
+    color: colors.text,
+    fontSize: 12,
+    width: 96,
+  },
+  funnelRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    columnGap: spacing.sm,
+  },
+  funnelStages: {
+    marginTop: spacing.sm,
+    rowGap: spacing.sm,
+  },
+  funnelTrack: {
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    flex: 1,
+    height: 14,
+    overflow: 'hidden',
+  },
+  funnelValue: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '700',
+    minWidth: 24,
+    textAlign: 'right',
+  },
+  historyBlock: {
+    borderTopColor: colors.surfaceMuted,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: spacing.sm,
+    paddingTop: spacing.md,
+    rowGap: spacing.sm,
+  },
+  historyFill: {
+    backgroundColor: colors.primaryDark,
+    borderRadius: 999,
+    height: '100%',
+  },
+  historyList: {
+    rowGap: spacing.xs,
+  },
+  historyMonth: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 12,
+    width: 64,
+  },
+  historyRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    columnGap: spacing.sm,
+  },
+  historyTitle: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  historyTrack: {
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    flex: 1,
+    height: 10,
+    overflow: 'hidden',
+  },
+  historyValue: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '700',
+    minWidth: 24,
+    textAlign: 'right',
   },
   header: {
     backgroundColor: colors.primary,

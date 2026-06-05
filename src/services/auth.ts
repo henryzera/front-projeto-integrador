@@ -46,12 +46,40 @@ export type AuthResponse = {
   user: AuthUser;
 };
 
+export type RequestPasswordResetResponse = {
+  message: string;
+  resetToken?: string;
+  expiresInMinutes: number;
+};
+
+export type ResetPasswordResponse = {
+  message: string;
+};
+
+export type ProfileFunnel = {
+  preparing: number;
+  submitted: number;
+  won: number;
+  lost: number;
+};
+
+export type ProfileHistoryEntry = {
+  month: string;
+  preparing: number;
+  submitted: number;
+  won: number;
+  lost: number;
+  total: number;
+};
+
 export type ProfileDashboard = {
   contratacoesCount: number;
   documentHealthPercent: number;
   expiredDocumentsCount: number;
   openAlertsCount: number;
   pendingDocumentsCount: number;
+  funnel?: ProfileFunnel;
+  history?: ProfileHistoryEntry[];
 };
 
 export function login(payload: LoginPayload): Promise<AuthResponse> {
@@ -64,6 +92,20 @@ export function login(payload: LoginPayload): Promise<AuthResponse> {
 export function register(payload: RegisterPayload): Promise<AuthResponse> {
   return apiRequest<AuthResponse>('/auth/register', {
     body: payload,
+    method: 'POST',
+  });
+}
+
+export function requestPasswordReset(identifier: string): Promise<RequestPasswordResetResponse> {
+  return apiRequest<RequestPasswordResetResponse>('/auth/forgot-password', {
+    body: { identifier },
+    method: 'POST',
+  });
+}
+
+export function resetPassword(token: string, newPassword: string): Promise<ResetPasswordResponse> {
+  return apiRequest<ResetPasswordResponse>('/auth/reset-password', {
+    body: { newPassword, token },
     method: 'POST',
   });
 }

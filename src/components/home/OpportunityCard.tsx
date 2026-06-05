@@ -9,18 +9,43 @@ export type OpportunityCardVariant = 'compact' | 'media';
 
 export interface OpportunityCardProps {
   item: Contratacao;
-  compatibility: number;
+  compatibility?: number;
   onPress?: () => void;
   variant: OpportunityCardVariant;
+}
+
+type CompatibilityTier = {
+  badgeColor: string;
+  textColor: string;
+  label: string;
+};
+
+// Faixas de aderencia: alto (>=80), medio (>=60) e baixo (<60).
+function getCompatibilityTier(score: number): CompatibilityTier {
+  if (score >= 80) {
+    return { badgeColor: '#E2F7EE', label: 'Alta', textColor: '#0F8A57' };
+  }
+
+  if (score >= 60) {
+    return { badgeColor: '#FFF1D6', label: 'Média', textColor: '#9A6700' };
+  }
+
+  return { badgeColor: '#FDE3E1', label: 'Baixa', textColor: colors.error };
 }
 
 export function OpportunityCard({ item, compatibility, onPress, variant }: OpportunityCardProps) {
   const title = item.objetoCompra || 'Objeto da licitação';
   const issuer = getIssuer(item);
+  // Exibimos somente o score real vindo da API. Quando ausente, mostramos um estado neutro.
+  const hasScore = typeof compatibility === 'number' && Number.isFinite(compatibility);
+  const tier = hasScore ? getCompatibilityTier(compatibility as number) : null;
+  const scoreLabel = hasScore
+    ? `${compatibility}% compatível, aderência ${tier?.label}`
+    : 'sem score de compatibilidade';
 
   return (
     <AnimatedPressable
-      accessibilityLabel={`${title}. ${compatibility}% compatível`}
+      accessibilityLabel={`${title}. ${scoreLabel}`}
       accessibilityRole="button"
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
       onPress={onPress}>
@@ -43,7 +68,18 @@ export function OpportunityCard({ item, compatibility, onPress, variant }: Oppor
           </Text>
           <Text style={styles.detail}>• {formatCurrency(item.valorTotalEstimado)}</Text>
           <Text style={[styles.detail, styles.deadline]}>• {formatDeadline(item.dataEncerramentoProposta)}</Text>
-          <Text style={[styles.detail, styles.compatibility]}>• {compatibility}% Compatível</Text>
+          {hasScore && tier ? (
+            <View style={[styles.compatibilityPill, { backgroundColor: tier.badgeColor }]}>
+              <Ionicons color={tier.textColor} name="sparkles" size={12} />
+              <Text style={[styles.compatibilityPillText, { color: tier.textColor }]}>
+                {compatibility}% compatível · {tier.label}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.neutralPill}>
+              <Text style={styles.neutralPillText}>Sem score</Text>
+            </View>
+          )}
         </View>
 
         <Ionicons color={colors.text} name="arrow-forward" size={24} />
@@ -115,8 +151,19 @@ const styles = StyleSheet.create({
   compactMedia: {
     height: spacing.xl,
   },
-  compatibility: {
-    color: colors.primary,
+  compatibilityPill: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    columnGap: 4,
+    flexDirection: 'row',
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  compatibilityPillText: {
+    ...typography.tabLabel,
+    fontWeight: '700',
   },
   container: {
     marginBottom: spacing.xl,
@@ -159,6 +206,19 @@ const styles = StyleSheet.create({
     right: spacing.sm,
     top: spacing.md,
     width: spacing.xl,
+  },
+  neutralPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  neutralPillText: {
+    ...typography.tabLabel,
+    color: colors.textSecondary,
+    fontWeight: '600',
   },
   pressed: {
     opacity: 0.78,

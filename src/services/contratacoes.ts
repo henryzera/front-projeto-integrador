@@ -52,11 +52,19 @@ export type DatasImportantes = {
   ultimaAtualizacao?: string;
 };
 
+export type Elegibilidade = {
+  exclusivaMeEpp: boolean;
+  dentroLimiteMei: boolean;
+  mensagem: string;
+};
+
 export type ContratacaoDetail = Contratacao & {
   dadosOrgao?: DadosOrgao;
   datasImportantes?: DatasImportantes;
   documentosExigidos?: string[];
+  elegibilidade?: Elegibilidade;
   requisitos?: string[];
+  resumoSimplificado?: string[];
   statusOportunidade?: string;
   valorEstimado?: number;
 };
@@ -72,11 +80,14 @@ export type ListContratacoesParams = {
   cnae?: string;
   limit?: number;
   meOnly?: boolean;
+  modalidadeNome?: string;
   municipio?: string;
   q?: string;
   skip?: number;
   status?: string;
   uf?: string;
+  valorMax?: number;
+  valorMin?: number;
 };
 
 export function listContratacoes(
@@ -104,4 +115,41 @@ export function listContratacoes(
 
 export function getContratacao(token: string, id: string): Promise<ContratacaoDetail> {
   return apiRequest<ContratacaoDetail>(`/contratacoes/${id}`, { token });
+}
+
+export type ParticipationStatus = 'preparing' | 'submitted' | 'won' | 'lost';
+
+export type ChecklistItem = {
+  id: string;
+  label: string;
+  checked: boolean;
+  required: boolean;
+};
+
+export type Checklist = {
+  contratacaoId: string;
+  participationStatus: ParticipationStatus;
+  items: ChecklistItem[];
+  updatedAt: string;
+};
+
+export type UpdateChecklistPayload = {
+  participationStatus?: ParticipationStatus;
+  items?: { id: string; checked: boolean }[];
+};
+
+export function getContratacaoChecklist(token: string, id: string): Promise<Checklist> {
+  return apiRequest<Checklist>(`/contratacoes/${id}/checklist`, { token });
+}
+
+export function updateContratacaoChecklist(
+  token: string,
+  id: string,
+  payload: UpdateChecklistPayload,
+): Promise<Checklist> {
+  return apiRequest<Checklist>(`/contratacoes/${id}/checklist`, {
+    body: payload,
+    method: 'PUT',
+    token,
+  });
 }

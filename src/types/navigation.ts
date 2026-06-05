@@ -6,6 +6,7 @@ export type RootStackParamList = {
     id: string;
   };
   Register: undefined;
+  ForgotPassword: undefined;
 };
 
 export type MainTabParamList = {

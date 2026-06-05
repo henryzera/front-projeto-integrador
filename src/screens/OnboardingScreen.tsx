@@ -15,6 +15,7 @@ import { images } from "../assets/images";
 import { Button } from "../components/Button";
 import { OnboardingItem } from "../components/OnboardingItem";
 import { PaginationDots } from "../components/PaginationDots";
+import { setOnboardingCompleted } from "../store/authStorage";
 import { colors, spacing } from "../theme";
 import type { RootStackParamList } from "../types/navigation";
 
@@ -42,7 +43,7 @@ const onboardingSlides: OnboardingSlide[] = [
     id: "simple-notices",
     title: "Chega de editais complicados",
     description:
-      "Nossa IA analisa os requisitos da Lei 14.133/2021 e te diz exatamente o que você precisa para participar, sem juridiquês.",
+      "Traduzimos os requisitos da Lei 14.133/2021 em linguagem simples e mostramos de forma organizada o que você precisa para participar, sem juridiquês.",
     image: images.onboarding2,
   },
   {
@@ -78,7 +79,17 @@ export function OnboardingScreen({ navigation }: OnboardingScreenProps) {
       return;
     }
 
-    navigation.navigate("Login");
+    void finishOnboarding();
+  };
+
+  const finishOnboarding = async (): Promise<void> => {
+    try {
+      await setOnboardingCompleted(true);
+    } catch {
+      // Mesmo se a persistencia falhar, seguimos para o login para nao travar o usuario.
+    } finally {
+      navigation.navigate("Login");
+    }
   };
 
   return (

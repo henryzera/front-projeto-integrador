@@ -4,7 +4,7 @@ function onlyDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
 
-const passwordSchema = z
+export const passwordSchema = z
   .string()
   .min(8, 'A senha deve ter pelo menos 8 caracteres.')
   .regex(/[a-z]/, 'A senha precisa ter uma letra minuscula.')
@@ -37,5 +37,22 @@ export const registerFormSchema = z
     path: ['confirmPassword'],
   });
 
+export const forgotPasswordRequestSchema = z.object({
+  identifier: z.string().trim().min(3, 'Informe seu email ou CNPJ.'),
+});
+
+export const resetPasswordFormSchema = z
+  .object({
+    token: z.string().trim().min(1, 'Informe o código de recuperação.'),
+    newPassword: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'As senhas nao conferem.',
+    path: ['confirmPassword'],
+  });
+
 export type LoginFormData = z.infer<typeof loginFormSchema>;
 export type RegisterFormData = z.infer<typeof registerFormSchema>;
+export type ForgotPasswordRequestData = z.infer<typeof forgotPasswordRequestSchema>;
+export type ResetPasswordFormData = z.infer<typeof resetPasswordFormSchema>;
