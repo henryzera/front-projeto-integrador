@@ -7,4 +7,4 @@ export {
   type ValueRangePreset,
 } from './HomeFilterPanel';
 export { HomeSearchBar } from './HomeSearchBar';
-export { OpportunityCard, type OpportunityCardVariant } from './OpportunityCard';
+export { OpportunityCard } from './OpportunityCard';

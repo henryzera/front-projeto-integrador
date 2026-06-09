@@ -5,13 +5,10 @@ import { AnimatedPressable } from '../AnimatedPressable';
 import type { Contratacao } from '../../services';
 import { colors, spacing, typography } from '../../theme';
 
-export type OpportunityCardVariant = 'compact' | 'media';
-
 export interface OpportunityCardProps {
   item: Contratacao;
   compatibility?: number;
   onPress?: () => void;
-  variant: OpportunityCardVariant;
 }
 
 type CompatibilityTier = {
@@ -33,7 +30,7 @@ function getCompatibilityTier(score: number): CompatibilityTier {
   return { badgeColor: '#FDE3E1', label: 'Baixa', textColor: colors.error };
 }
 
-export function OpportunityCard({ item, compatibility, onPress, variant }: OpportunityCardProps) {
+export function OpportunityCard({ item, compatibility, onPress }: OpportunityCardProps) {
   const title = item.objetoCompra || 'Objeto da licitação';
   const issuer = getIssuer(item);
   // Exibimos somente o score real vindo da API. Quando ausente, mostramos um estado neutro.
@@ -49,15 +46,6 @@ export function OpportunityCard({ item, compatibility, onPress, variant }: Oppor
       accessibilityRole="button"
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
       onPress={onPress}>
-      <View style={[styles.media, variant === 'compact' ? styles.compactMedia : styles.largeMedia]}>
-        <Ionicons color={colors.iconMuted} name="image" size={24} />
-        {variant === 'media' ? (
-          <View style={styles.menuButton}>
-            <Ionicons color={colors.text} name="ellipsis-horizontal" size={18} />
-          </View>
-        ) : null}
-      </View>
-
       <View style={styles.content}>
         <View style={styles.textContent}>
           <Text numberOfLines={4} style={styles.title}>
@@ -148,9 +136,6 @@ function toTitleCase(value: string): string {
 }
 
 const styles = StyleSheet.create({
-  compactMedia: {
-    height: spacing.xl,
-  },
   compatibilityPill: {
     alignItems: 'center',
     alignSelf: 'flex-start',
@@ -171,7 +156,6 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     flexDirection: 'row',
-    marginTop: spacing.md,
   },
   deadline: {
     color: colors.warning,
@@ -185,27 +169,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     lineHeight: 21,
-  },
-  largeMedia: {
-    aspectRatio: 0.63,
-  },
-  media: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: spacing.sm,
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  menuButton: {
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: spacing.lg,
-    height: spacing.xl,
-    justifyContent: 'center',
-    position: 'absolute',
-    right: spacing.sm,
-    top: spacing.md,
-    width: spacing.xl,
   },
   neutralPill: {
     alignSelf: 'flex-start',

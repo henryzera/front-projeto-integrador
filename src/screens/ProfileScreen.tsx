@@ -196,9 +196,6 @@ export function ProfileScreen() {
           <View style={styles.companyCard}>
             <View style={styles.cardHeader}>
               <Text style={styles.sectionTitle}>Empresa</Text>
-              <View style={styles.companyTypeBadge}>
-                <Text style={styles.companyTypeText}>MEI</Text>
-              </View>
             </View>
 
             <View style={styles.infoGrid}>
@@ -686,16 +683,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     rowGap: spacing.md,
   },
-  companyTypeBadge: {
-    backgroundColor: '#E8F5F2',
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  companyTypeText: {
-    ...typography.tabLabel,
-    color: colors.primaryDark,
-  },
+  // Mock removed — company type badge was hardcoded as "MEI"; should come from user data when available.
+  // companyTypeBadge: { backgroundColor: '#E8F5F2', borderRadius: 999, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+  // companyTypeText: { ...typography.tabLabel, color: colors.primaryDark },
   container: {
     backgroundColor: colors.primary,
     flex: 1,

@@ -5,19 +5,19 @@ import {
   Alert,
   Animated,
   Easing,
-  Modal,
+  // Modal, // SUBMISSION FEATURE DISABLED
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
+  // TextInput, // SUBMISSION FEATURE DISABLED
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '../components/AnimatedPressable';
 import {
-  createDocument,
+  // createDocument, // SUBMISSION FEATURE DISABLED
   deleteDocument,
   getDocumentsSummary,
   listDocuments,
@@ -74,22 +74,23 @@ const statusStyles: Record<DocumentStatus, StatusStyle> = {
   pending: {
     backgroundColor: '#EDF0F2',
     color: colors.textSecondary,
-    icon: 'cloud-upload',
-    label: 'Enviar',
+    icon: 'ellipse-outline',
+    label: 'Pendente',
   },
 };
 
 export function DocumentsScreen() {
   const { token } = useAuth();
-  const [categoryTitle, setCategoryTitle] = useState('Regularidade Fiscal');
+  // SUBMISSION FEATURE DISABLED — states below belong to the document creation flow.
+  // const [categoryTitle, setCategoryTitle] = useState('Regularidade Fiscal');
+  // const [expiresAt, setExpiresAt] = useState('');
+  // const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  // const [isSaving, setIsSaving] = useState(false);
+  // const [newDocumentName, setNewDocumentName] = useState('');
   const [documentGroups, setDocumentGroups] = useState<DocumentGroup[]>([]);
   const [error, setError] = useState('');
-  const [expiresAt, setExpiresAt] = useState('');
   const [expandedGroupId, setExpandedGroupId] = useState<string | undefined>();
-  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [newDocumentName, setNewDocumentName] = useState('');
   const [summary, setSummary] = useState<DocumentsSummary>(emptySummary);
   const healthProgress = useRef(new Animated.Value(0)).current;
   const screenProgress = useRef(new Animated.Value(0)).current;
@@ -122,37 +123,37 @@ export function DocumentsScreen() {
     setExpandedGroupId((currentGroupId) => (currentGroupId === groupId ? undefined : groupId));
   };
 
-  const handleOpenCreateModal = (): void => {
-    setCategoryTitle(documentGroups[0]?.title || 'Regularidade Fiscal');
-    setExpiresAt('');
-    setNewDocumentName('');
-    setIsCreateModalVisible(true);
-  };
-
-  const handleCreateDocument = async (): Promise<void> => {
-    if (!token || !newDocumentName.trim()) {
-      setError('Informe o nome do item do checklist.');
-      return;
-    }
-
-    try {
-      setError('');
-      setIsSaving(true);
-      await createDocument(token, {
-        categoryId: slugify(categoryTitle),
-        categoryTitle: categoryTitle.trim() || 'Checklist do MEI',
-        expiresAt: toIsoDate(expiresAt),
-        name: newDocumentName.trim(),
-        status: 'pending',
-      });
-      setIsCreateModalVisible(false);
-      await loadDocuments();
-    } catch {
-      setError('Nao foi possivel criar o item do checklist.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  // SUBMISSION FEATURE DISABLED — functions below handle document creation.
+  // const handleOpenCreateModal = (): void => {
+  //   setCategoryTitle(documentGroups[0]?.title || 'Regularidade Fiscal');
+  //   setExpiresAt('');
+  //   setNewDocumentName('');
+  //   setIsCreateModalVisible(true);
+  // };
+  //
+  // const handleCreateDocument = async (): Promise<void> => {
+  //   if (!token || !newDocumentName.trim()) {
+  //     setError('Informe o nome do item do checklist.');
+  //     return;
+  //   }
+  //   try {
+  //     setError('');
+  //     setIsSaving(true);
+  //     await createDocument(token, {
+  //       categoryId: slugify(categoryTitle),
+  //       categoryTitle: categoryTitle.trim() || 'Checklist do MEI',
+  //       expiresAt: toIsoDate(expiresAt),
+  //       name: newDocumentName.trim(),
+  //       status: 'pending',
+  //     });
+  //     setIsCreateModalVisible(false);
+  //     await loadDocuments();
+  //   } catch {
+  //     setError('Nao foi possivel criar o item do checklist.');
+  //   } finally {
+  //     setIsSaving(false);
+  //   }
+  // };
 
   const handleUpdateStatus = async (document: UserDocument, status: DocumentStatus): Promise<void> => {
     if (!token) {
@@ -271,23 +272,22 @@ export function DocumentsScreen() {
             />
           }
           showsVerticalScrollIndicator={false}>
-          <View style={styles.statusRow}>
-            <View style={styles.healthCard}>
-              <View style={styles.progressTrack}>
-                <Animated.View style={[styles.progressFill, { width: healthProgressWidth }]} />
-              </View>
-              <Text style={styles.healthText}>{summary.healthPercent}% dos documentos estão em dia</Text>
+          <View style={styles.healthCard}>
+            <View style={styles.progressTrack}>
+              <Animated.View style={[styles.progressFill, { width: healthProgressWidth }]} />
             </View>
-
-            <AnimatedPressable
-              accessibilityLabel="Adicionar item ao checklist"
-              accessibilityRole="button"
-              style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
-              onPress={handleOpenCreateModal}>
-              <Ionicons color={colors.primaryDark} name="add" size={28} />
-              <Text style={styles.addButtonText}>Item</Text>
-            </AnimatedPressable>
+            <Text style={styles.healthText}>{summary.healthPercent}% dos documentos estão em dia</Text>
           </View>
+          {/* SUBMISSION FEATURE DISABLED — add-item button removed.
+          <AnimatedPressable
+            accessibilityLabel="Adicionar item ao checklist"
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+            onPress={handleOpenCreateModal}>
+            <Ionicons color={colors.primaryDark} name="add" size={28} />
+            <Text style={styles.addButtonText}>Item</Text>
+          </AnimatedPressable>
+          */}
 
           <Text style={styles.educationalNote}>
             Use este checklist para se preparar. Ele nao substitui certidoes oficiais nem valida sua habilitacao juridica.
@@ -360,6 +360,7 @@ export function DocumentsScreen() {
           </View>
         </ScrollView>
 
+        {/* SUBMISSION FEATURE DISABLED — create-document modal removed.
         <Modal animationType="slide" transparent visible={isCreateModalVisible}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -411,6 +412,7 @@ export function DocumentsScreen() {
             </View>
           </View>
         </Modal>
+        */}
       </Animated.View>
     </SafeAreaView>
   );
@@ -484,7 +486,7 @@ function DocumentRow({
 
 function getDocumentSubtitle(document: UserDocument): string {
   if (document.status === 'pending') {
-    return 'Aguardando envio';
+    return 'Pendente de atualização';
   }
 
   if (document.expiresAt) {
@@ -514,45 +516,34 @@ function formatDate(value: string): string {
   return Intl.DateTimeFormat('pt-BR').format(date);
 }
 
-function slugify(value: string): string {
-  return (
-    value
-      .trim()
-      .toLocaleLowerCase('pt-BR')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '') || 'checklist-mei'
-  );
-}
-
-function toIsoDate(value: string): string | undefined {
-  if (!value.trim()) {
-    return undefined;
-  }
-
-  const date = new Date(`${value.trim()}T00:00:00`);
-
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-
-  return date.toISOString();
-}
+// SUBMISSION FEATURE DISABLED \u2014 helpers below are used only by the create-document flow.
+// function slugify(value: string): string {
+//   return (
+//     value
+//       .trim()
+//       .toLocaleLowerCase('pt-BR')
+//       .normalize('NFD')
+//       .replace(/[\u0300-\u036f]/g, '')
+//       .replace(/[^a-z0-9]+/g, '-')
+//       .replace(/(^-|-$)/g, '') || 'checklist-mei'
+//   );
+// }
+//
+// function toIsoDate(value: string): string | undefined {
+//   if (!value.trim()) {
+//     return undefined;
+//   }
+//   const date = new Date(`${value.trim()}T00:00:00`);
+//   if (Number.isNaN(date.getTime())) {
+//     return undefined;
+//   }
+//   return date.toISOString();
+// }
 
 const styles = StyleSheet.create({
-  addButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 20,
-    height: 64,
-    justifyContent: 'center',
-    width: 72,
-  },
-  addButtonText: {
-    ...typography.tabLabel,
-    color: colors.primaryDark,
-  },
+  // SUBMISSION FEATURE DISABLED — addButton and addButtonText styles belong to the add-item button.
+  // addButton: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 20, height: 64, justifyContent: 'center', width: 72 },
+  // addButtonText: { ...typography.tabLabel, color: colors.primaryDark },
   body: {
     backgroundColor: colors.white,
     flex: 1,
@@ -721,48 +712,15 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.7,
   },
-  modalActions: {
-    flexDirection: 'row',
-    columnGap: spacing.sm,
-  },
-  modalContent: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    padding: spacing.lg,
-    rowGap: spacing.md,
-  },
-  modalInput: {
-    ...typography.body,
-    backgroundColor: colors.surface,
-    borderColor: colors.surfaceMuted,
-    borderRadius: 14,
-    borderWidth: 1,
-    color: colors.text,
-    minHeight: 50,
-    paddingHorizontal: spacing.md,
-  },
-  modalOverlay: {
-    backgroundColor: 'rgba(0,0,0,0.24)',
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalTitle: {
-    ...typography.title,
-    color: colors.text,
-  },
-  primaryButton: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 16,
-    flex: 1,
-    minHeight: 50,
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
-    ...typography.button,
-    color: colors.white,
-  },
+  // SUBMISSION FEATURE DISABLED — modal styles below belong to the create-document modal.
+  // modalActions: { flexDirection: 'row', columnGap: spacing.sm },
+  // modalContent: { backgroundColor: colors.white, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: spacing.lg, rowGap: spacing.md },
+  // modalInput: { ...typography.body, backgroundColor: colors.surface, borderColor: colors.surfaceMuted, borderRadius: 14, borderWidth: 1, color: colors.text, minHeight: 50, paddingHorizontal: spacing.md },
+  // modalOverlay: { backgroundColor: 'rgba(0,0,0,0.24)', flex: 1, justifyContent: 'flex-end' },
+  // modalTitle: { ...typography.title, color: colors.text },
+  // SUBMISSION FEATURE DISABLED
+  // primaryButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 16, flex: 1, minHeight: 50, justifyContent: 'center' },
+  // primaryButtonText: { ...typography.button, color: colors.white },
   progressFill: {
     backgroundColor: colors.primary,
     borderRadius: 999,
@@ -783,28 +741,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     columnGap: spacing.xs,
   },
-  statusRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    columnGap: spacing.sm,
-  },
+  // SUBMISSION FEATURE DISABLED — statusRow was the row containing health card + add button.
+  // statusRow: { alignItems: 'center', flexDirection: 'row', columnGap: spacing.sm },
   statusText: {
     ...typography.tabLabel,
     fontSize: 11,
   },
-  secondaryButton: {
-    alignItems: 'center',
-    borderColor: colors.surfaceMuted,
-    borderRadius: 16,
-    borderWidth: 1,
-    flex: 1,
-    minHeight: 50,
-    justifyContent: 'center',
-  },
-  secondaryButtonText: {
-    ...typography.button,
-    color: colors.text,
-  },
+  // SUBMISSION FEATURE DISABLED
+  // secondaryButton: { alignItems: 'center', borderColor: colors.surfaceMuted, borderRadius: 16, borderWidth: 1, flex: 1, minHeight: 50, justifyContent: 'center' },
+  // secondaryButtonText: { ...typography.button, color: colors.text },
 });
 
 export default DocumentsScreen;

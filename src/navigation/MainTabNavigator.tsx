@@ -6,7 +6,7 @@ import {
 import { Easing, StyleSheet, Text, View } from 'react-native';
 
 import { AlertsScreen } from '../screens/AlertsScreen';
-import { DocumentsScreen } from '../screens/DocumentsScreen';
+// import { DocumentsScreen } from '../screens/DocumentsScreen'; // HIDDEN — feature disabled
 import { HomeScreen } from '../screens/HomeScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { colors, spacing, typography } from '../theme';
@@ -26,10 +26,7 @@ const tabIconNames: Record<
     active: 'notifications',
     inactive: 'notifications-outline',
   },
-  Documentos: {
-    active: 'folder',
-    inactive: 'folder-outline',
-  },
+  // Documentos: { active: 'folder', inactive: 'folder-outline' }, // HIDDEN — feature disabled
   Editais: {
     active: 'document-text',
     inactive: 'document-text-outline',
@@ -74,7 +71,7 @@ export function MainTabNavigator() {
   return (
     <Tab.Navigator initialRouteName="Editais" screenOptions={screenOptions}>
       <Tab.Screen name="Editais" component={HomeScreen} />
-      <Tab.Screen name="Documentos" component={DocumentsScreen} />
+      {/* <Tab.Screen name="Documentos" component={DocumentsScreen} /> */}{/* HIDDEN — feature disabled */}
       <Tab.Screen name="Alertas" component={AlertsScreen} />
       <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>

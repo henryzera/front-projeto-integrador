@@ -11,7 +11,7 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   Editais: undefined;
-  Documentos: undefined;
+  // Documentos: undefined; // HIDDEN — feature disabled
   Alertas: undefined;
   Perfil: undefined;
 };

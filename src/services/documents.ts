@@ -47,16 +47,17 @@ export function listDocuments(token: string): Promise<ListDocumentsResponse> {
   return apiRequest<ListDocumentsResponse>('/documents', { token });
 }
 
-export function createDocument(
-  token: string,
-  payload: CreateDocumentPayload,
-): Promise<{ document: UserDocument }> {
-  return apiRequest<{ document: UserDocument }>('/documents', {
-    body: payload,
-    method: 'POST',
-    token,
-  });
-}
+// SUBMISSION FEATURE DISABLED — document creation through the app is not supported.
+// export function createDocument(
+//   token: string,
+//   payload: CreateDocumentPayload,
+// ): Promise<{ document: UserDocument }> {
+//   return apiRequest<{ document: UserDocument }>('/documents', {
+//     body: payload,
+//     method: 'POST',
+//     token,
+//   });
+// }
 
 export function updateDocument(
   token: string,

@@ -21,7 +21,6 @@ import {
   defaultHomeFilters,
   resolveValueRange,
   type HomeFilters,
-  type OpportunityCardVariant,
 } from '../components/home';
 import type { StreamingLicitacao } from '../hooks';
 import { listContratacoes, type Contratacao } from '../services';
@@ -29,16 +28,6 @@ import { useAuth, useLicitacoesStream } from '../store';
 import { colors, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../types/navigation';
 import { configureNextLayoutAnimation } from '../utils/motion';
-
-type OpportunityColumnItem = {
-  item: Contratacao;
-  variant: OpportunityCardVariant;
-};
-
-type OpportunityColumns = {
-  left: OpportunityColumnItem[];
-  right: OpportunityColumnItem[];
-};
 
 const opportunitiesLimit = 12;
 
@@ -132,8 +121,6 @@ export function HomeScreen() {
     return () => clearTimeout(timeoutId);
   }, [streamNotice]);
 
-  const columns = useMemo(() => splitIntoColumns(contratacoes), [contratacoes]);
-
   const handleClearSearch = (): void => {
     setQuery('');
   };
@@ -207,30 +194,15 @@ export function HomeScreen() {
             <Text style={styles.emptyText}>Nenhum edital encontrado para os filtros selecionados.</Text>
           ) : null}
 
-          <View style={styles.grid}>
-            <View style={styles.column}>
-              {columns.left.map(({ item, variant }) => (
-                <OpportunityCard
-                  compatibility={item.compatibilityScore}
-                  item={item}
-                  key={item._id}
-                  onPress={() => navigation.navigate('OpportunityDetail', { id: item._id })}
-                  variant={variant}
-                />
-              ))}
-            </View>
-
-            <View style={[styles.column, styles.rightColumn]}>
-              {columns.right.map(({ item, variant }) => (
-                <OpportunityCard
-                  compatibility={item.compatibilityScore}
-                  item={item}
-                  key={item._id}
-                  onPress={() => navigation.navigate('OpportunityDetail', { id: item._id })}
-                  variant={variant}
-                />
-              ))}
-            </View>
+          <View style={styles.list}>
+            {contratacoes.map((item) => (
+              <OpportunityCard
+                compatibility={item.compatibilityScore}
+                item={item}
+                key={item._id}
+                onPress={() => navigation.navigate('OpportunityDetail', { id: item._id })}
+              />
+            ))}
           </View>
         </ScrollView>
       </View>
@@ -244,29 +216,6 @@ export function HomeScreen() {
         visible={isFilterPanelVisible}
       />
     </SafeAreaView>
-  );
-}
-
-function splitIntoColumns(items: Contratacao[]): OpportunityColumns {
-  return items.reduce<OpportunityColumns>(
-    (columns, item, index) => {
-      const columnItem: OpportunityColumnItem = {
-        item,
-        variant: index % 3 === 0 ? 'compact' : 'media',
-      };
-
-      if (index % 2 === 0) {
-        columns.left.push(columnItem);
-      } else {
-        columns.right.push(columnItem);
-      }
-
-      return columns;
-    },
-    {
-      left: [],
-      right: [],
-    },
   );
 }
 
@@ -305,9 +254,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xl,
     rowGap: spacing.lg,
-  },
-  column: {
-    flex: 1,
   },
   container: {
     backgroundColor: colors.primary,
@@ -372,8 +318,7 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
     fontWeight: '700',
   },
-  grid: {
-    flexDirection: 'row',
+  list: {
     paddingTop: spacing.xl,
   },
   hero: {
@@ -414,9 +359,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     fontWeight: '600',
-  },
-  rightColumn: {
-    marginLeft: spacing.md,
   },
 });
 
