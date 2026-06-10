@@ -18,6 +18,9 @@ export const loginFormSchema = z.object({
 
 export const registerFormSchema = z
   .object({
+    acceptTerms: z
+      .boolean()
+      .refine((value) => value === true, 'É necessário aceitar os Termos de Uso e a Política de Privacidade.'),
     cnae: z
       .string()
       .transform(onlyDigits)

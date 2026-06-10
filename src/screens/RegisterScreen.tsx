@@ -29,6 +29,7 @@ type RegisterFormValues = {
   cnae: string;
   password: string;
   confirmPassword: string;
+  acceptTerms: boolean;
 };
 
 const totalSteps = 3;
@@ -43,6 +44,7 @@ export function RegisterScreen({ navigation }: RegisterScreenProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
   const [formValues, setFormValues] = useState<RegisterFormValues>({
+    acceptTerms: false,
     cnae: '',
     cnpj: '',
     confirmPassword: '',
@@ -60,6 +62,14 @@ export function RegisterScreen({ navigation }: RegisterScreenProps) {
         [field]: value,
       }));
     };
+
+  const toggleAcceptTerms = (): void => {
+    setFormError('');
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      acceptTerms: !currentValues.acceptTerms,
+    }));
+  };
 
   const handleNextPress = (): void => {
     setFormError('');
@@ -84,6 +94,11 @@ export function RegisterScreen({ navigation }: RegisterScreenProps) {
 
   const handleSubmitPress = async (): Promise<void> => {
     setFormError('');
+
+    if (!formValues.acceptTerms) {
+      setFormError('É necessário aceitar os Termos de Uso e a Política de Privacidade.');
+      return;
+    }
 
     try {
       const data = registerFormSchema.parse(formValues);
@@ -180,6 +195,24 @@ export function RegisterScreen({ navigation }: RegisterScreenProps) {
                   textContentType="newPassword"
                   value={formValues.confirmPassword}
                 />
+
+                <TouchableOpacity
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: formValues.acceptTerms }}
+                  activeOpacity={0.7}
+                  onPress={toggleAcceptTerms}
+                  style={styles.consentRow}
+                >
+                  <View style={[styles.checkbox, formValues.acceptTerms && styles.checkboxChecked]}>
+                    {formValues.acceptTerms ? <Text style={styles.checkboxMark}>✓</Text> : null}
+                  </View>
+                  <Text style={styles.consentText}>
+                    Li e concordo com os{' '}
+                    <Text style={styles.consentHighlight}>Termos de Uso</Text> e a{' '}
+                    <Text style={styles.consentHighlight}>Política de Privacidade</Text>, autorizando o
+                    tratamento dos meus dados conforme a LGPD.
+                  </Text>
+                </TouchableOpacity>
               </>
             )}
 
@@ -210,6 +243,38 @@ export function RegisterScreen({ navigation }: RegisterScreenProps) {
 }
 
 const styles = StyleSheet.create({
+  checkbox: {
+    alignItems: 'center',
+    borderColor: colors.primary,
+    borderRadius: 6,
+    borderWidth: 2,
+    height: 22,
+    justifyContent: 'center',
+    marginTop: 2,
+    width: 22,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+  },
+  checkboxMark: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  consentHighlight: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  consentRow: {
+    alignItems: 'flex-start',
+    columnGap: spacing.sm,
+    flexDirection: 'row',
+  },
+  consentText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    flex: 1,
+  },
   container: {
     backgroundColor: colors.white,
     flex: 1,

@@ -26,6 +26,7 @@ export type LoginPayload = {
 };
 
 export type RegisterPayload = {
+  acceptTerms: boolean;
   cnae: string;
   cnpj: string;
   confirmPassword: string;
