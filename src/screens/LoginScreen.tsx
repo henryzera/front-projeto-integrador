@@ -80,7 +80,7 @@ export function LoginScreen({ navigation }: LoginScreenProps) {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.title}>Projeto Integrador</Text>
+            <Text style={styles.title}>PortoMei</Text>
             <Text style={styles.subtitle}>Seja bem-vindo(a)!</Text>
           </View>
 
