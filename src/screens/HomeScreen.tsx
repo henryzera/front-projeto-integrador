@@ -163,12 +163,12 @@ export function HomeScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
-        <View style={styles.liveStatus}>
+        {/* <View style={styles.liveStatus}>
           <View style={[styles.liveDot, isConnected ? styles.liveDotOn : styles.liveDotOff]} />
           <Text style={styles.liveStatusText}>
             {isConnected ? 'Streaming PNCP conectado' : 'Reconectando streaming PNCP'}
           </Text>
-        </View>
+        </View> */}
         {streamNotice ? (
           <StreamingNotice description={streamNotice.description} title={streamNotice.title} />
         ) : null}
