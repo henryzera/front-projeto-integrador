@@ -1,4 +1,6 @@
-# reekinator — App Mobile
+# Recife Mei — App Mobile
+
+<img width="370" height="726" alt="jornada-user" src="https://github.com/user-attachments/assets/b35a2a0a-0946-4c7e-b1af-5317bef3c1ad" />
 
 > **Licitações públicas ao alcance do MEI.** Centralize editais, entenda o "juridiquês" e nunca mais perca um prazo.
 
@@ -7,7 +9,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
 ![Platforms](https://img.shields.io/badge/plataformas-iOS%20%C2%B7%20Android%20%C2%B7%20Web-2C7BE5)
 
-O **reekinator** é o aplicativo mobile (React Native + Expo) da Plataforma de Apoio à
+O **Recife Mei** é o aplicativo mobile (React Native + Expo) da Plataforma de Apoio à
 Concorrência Pública para Microempreendedores Individuais (MEIs). Ele reúne em um só
 lugar a descoberta de oportunidades de compras públicas, a tradução dos requisitos
 legais em linguagem simples, um checklist interativo de habilitação, alertas de prazo
