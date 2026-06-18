@@ -315,10 +315,10 @@ para testar: basta baixar e instalar o APK em um dispositivo Android.
 ---
 
 ## 11. Equipe
-| :--- | :--- |
-| **Caio Furtado** | Desenvolvimento Front-end |
-| **Emanuel Henry** | Desenvolvimento Front-end & API |
-| **Sofia Travassos** | Design |
-| **Milo Moreira** | Engenharia de Dados |
-| **Vinicius Souza** | Engenharia de Dados |
-| **Hailton** | Documentação |
+
+* Caio Furtado - Desenvolvimento Front-end
+* Emanuel Henry - Desenvolvimento Front-end & API
+* Hailton Neto - Documentação
+* Milo Castro - Engenharia de Dados
+* Sofia Travassos - Design
+* Vinícius Souza - Engenharia de Dados
