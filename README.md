@@ -290,3 +290,24 @@ Todas usam o prefixo `EXPO_PUBLIC_` para serem expostas ao cliente em tempo de b
   Navigation.
 - **Dependência dos serviços públicos.** Sem configurar `.env`, o app usa backends hospedados
   (Render), que podem ter *cold start* e indisponibilidade ocasional.
+
+---
+
+## 10. Entrega final da disciplina
+
+Para a avaliação, foi gerado um **APK Android instalável** do reekinator a partir do EAS
+Build (perfil `preview`). Não é necessário ter o ambiente de desenvolvimento configurado
+para testar: basta baixar e instalar o APK em um dispositivo Android.
+
+### Onde obter o APK
+- **Release do GitHub:** [henryzera/front-projeto-integrador — releases](https://github.com/henryzera/front-projeto-integrador/releases/latest)
+- **Build do Expo (EAS):** [expo.dev — builds do projeto](https://expo.dev/accounts/henryzera/projects/front-projeto-integrador/builds)
+
+### Como instalar no Android
+1. Abra um dos links acima no celular e baixe o arquivo `.apk` mais recente.
+2. Toque no arquivo baixado para instalar. Se solicitado, **permita a instalação de apps de
+   fontes desconhecidas** (Configurações → Apps → Acesso especial → Instalar apps desconhecidos).
+3. Abra o **reekinator** normalmente. Por padrão, o app já aponta para os serviços públicos
+   (API e streaming), então funciona sem configuração adicional.
+
+> O APK é destinado a avaliação/testes (distribuição interna), não a publicação na Play Store.

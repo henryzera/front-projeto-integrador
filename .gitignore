@@ -9,6 +9,10 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Yarn PnP (projeto padronizado em npm)
+.pnp.*
+.yarn/*
+
 # Native
 .kotlin/
 *.orig.*

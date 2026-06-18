@@ -12,11 +12,10 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "tech.itroca.frontprojetointegrador",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#27AE9E",
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -43,6 +42,12 @@
     ],
     "experiments": {
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "43b1fcba-efbb-4f10-b8a7-1af45badf1a1"
+      }
+    },
+    "owner": "henryzera"
   }
 }
