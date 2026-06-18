@@ -322,3 +322,4 @@ para testar: basta baixar e instalar o APK em um dispositivo Android.
 * Milo Castro - Engenharia de Dados
 * Sofia Travassos - Design
 * Vinícius Souza - Engenharia de Dados
+* Messias - Documentação
