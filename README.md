@@ -311,3 +311,14 @@ para testar: basta baixar e instalar o APK em um dispositivo Android.
    (API e streaming), então funciona sem configuração adicional.
 
 > O APK é destinado a avaliação/testes (distribuição interna), não a publicação na Play Store.
+
+---
+
+## 11. Equipe
+| :--- | :--- |
+| **Caio Furtado** | Desenvolvimento Front-end |
+| **Emanuel Henry** | Desenvolvimento Front-end & API |
+| **Sofia Travassos** | Design |
+| **Milo Moreira** | Engenharia de Dados |
+| **Vinicius Souza** | Engenharia de Dados |
+| **Hailton** | Documentação |
