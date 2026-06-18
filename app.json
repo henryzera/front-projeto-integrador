@@ -14,7 +14,7 @@
     "android": {
       "package": "tech.itroca.frontprojetointegrador",
       "adaptiveIcon": {
-        "backgroundColor": "#27AE9E",
+        "backgroundColor": "#3B82F6",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "edgeToEdgeEnabled": true,
